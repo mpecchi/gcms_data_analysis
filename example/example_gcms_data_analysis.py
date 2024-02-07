@@ -17,7 +17,7 @@ p = Project()
 files_info_0 = p.load_files_info()
 # load the provided calibrations as dict, store bool to know if are deriv
 calibrations, is_calibr_deriv = p.load_calibrations()
-c1, c2 = calibrations['CalDB'], calibrations['CalDBder']
+c1, c2 = calibrations['calibration'], calibrations['deriv_calibration']
 # load provided classificaiton codes and mass fractions for fun. groups
 class_code_frac = p.load_class_code_frac()
 # load all GCMS txt files as single files
