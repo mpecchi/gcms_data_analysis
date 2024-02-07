@@ -1185,7 +1185,7 @@ class Project:
 
     folder_path = plib.Path.cwd()
     in_path = folder_path
-    out_path = plib.Path(in_path, 'Output')
+    out_path = plib.Path(in_path, 'output')
     shared_path = in_path.parents[0]
     plot_font='Dejavu Sans'
     plot_grid=False
@@ -1214,7 +1214,7 @@ class Project:
         """ necessary to specify the folder path with files """
         cls.folder_path = plib.Path(path).resolve()
         cls.in_path = cls.folder_path
-        cls.out_path = plib.Path(cls.in_path, 'Output')
+        cls.out_path = plib.Path(cls.in_path, 'output')
         plib.Path(cls.out_path).mkdir(parents=True, exist_ok=True)
         cls.shared_path = cls.in_path.parents[0]
 
