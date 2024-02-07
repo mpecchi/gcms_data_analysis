@@ -1,0 +1,15 @@
+[Header]
+Data File Name	C:\Users\user\Documents\mk2574\2023-04\FW-DCM-5-SCNN40_rxi300rt5sr10_7.qgd
+Output Date	4/12/2023
+Output Time	12:33:58 PM
+
+[MC Peak Table]
+# of Peaks	18
+Mass	TIC
+Peak#	Ret.Time	Proc.From	Proc.To	Mass	Area	Height	A/H	Conc.	Mark	Name	Ret. Index	Area%	Height%	SI	CAS #
+1	6.025	6.013	6.040	TIC	23386	24797	0.94	0.19	   			0.19	1.01	0	0-0-0
+2	36.163	36.107	36.233	TIC	44389	15019	2.96	0.37	   	Tetradecanoic acid		0.37	0.61	94	544-63-8
+3	40.052	40.000	40.087	TIC	15068	5705	2.64	0.13	   	Oxacycloheptadecan-2-one		0.13	0.23	82	109-29-5
+4	40.492	40.387	40.733	TIC	1878180	493759	3.80	15.64	   	n-Hexadecanoic acid		15.64	20.04	95	57-10-3
+5	43.847	43.733	43.900	TIC	1456119	339605	4.29	12.12	   	9,12-Octadecadienoic acid (Z,Z)-		12.12	13.78	95	60-33-3
+6	43.986	43.900	44.280	TIC	6379752	1147599	5.56	53.11	 V 	Oleic Acid		53.11	46.58	93	112-80-1
