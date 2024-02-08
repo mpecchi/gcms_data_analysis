@@ -1952,6 +1952,7 @@ class Project:
         for comp in rep.index.tolist():  # add conc values
             for name in rep.columns.tolist():
                 smp = self.files[name].set_index('iupac_name')
+                smp = smp[~smp.index.duplicated(keep='first')]
                 try:
                     rep.loc[comp, name] = smp.loc[comp, param]
                 except KeyError:
