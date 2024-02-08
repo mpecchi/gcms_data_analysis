@@ -47,13 +47,25 @@ sd1, sd2, sd3 = samples_std['A'], samples_std['Ader'], samples_std['B']
 # add stats to samples_info df
 samples_info = p.add_stats_to_samples_info()
 # create report (compounds based) for different parameters
-rep_conc, rep_conc_std = p.create_param_report(param='conc_vial_mg_L')
-rep_sample_fr, rep_sample_fr_std = p.create_param_report(param='fraction_of_sample_fr')
+rep_files_conc = p.create_files_param_report(param='conc_vial_mg_L')
+rep_files_fr= p.create_files_param_report(param='fraction_of_sample_fr')
+rep_samples_conc, rep_samples_conc_std = p.create_samples_param_report(param='conc_vial_mg_L')
+rep_samples_fr, rep_samples_fr_std = p.create_samples_param_report(param='fraction_of_sample_fr')
 # create aggreport (functionl group aggreageted based) for different parameters
-agg_conc, agg_conc_std = p.create_param_aggrrep(param='conc_vial_mg_L')
-agg_sample_fr, agg_sample_fr_std = p.create_param_aggrrep(param='fraction_of_sample_fr')
+agg_files_conc = p.create_files_param_aggrrep(param='conc_vial_mg_L')
+agg_files_fr = p.create_files_param_aggrrep(param='fraction_of_sample_fr')
+agg_samples_conc, agg_samples_conc_std = p.create_samples_param_aggrrep(param='conc_vial_mg_L')
+agg_samples_fr, agg_samples_fr_std = p.create_samples_param_aggrrep(param='fraction_of_sample_fr')
 # plot results bases on report
-#%%
+p.plot_ave_std(param='fraction_of_sample_fr', min_y_thresh=0, files_or_samples='files',
+    legend_location='outside',
+    only_samples_to_plot=['A_1', 'A_2', 'Ader_1', 'Ader_2'], #y_lim=[0, 5000]
+            )
+# plot results bases on aggreport
+p.plot_ave_std(param='fraction_of_sample_fr', aggr=True, files_or_samples='files',
+                min_y_thresh=0.01,
+    y_lim=[0, .5], color_palette='Set2')
+
 p.plot_ave_std(param='fraction_of_sample_fr', min_y_thresh=0,
     legend_location='outside', only_samples_to_plot=['A', 'Ader'], #y_lim=[0, 5000]
             )

@@ -1274,59 +1274,63 @@ class Project:
         """
         self.files_info = None
         self.files_info_loaded = False
-        self.samples_info = None
-        self.samples_info_created = False
-        self.samples_created = False
+        self.deriv_files_present = False
+        self.class_code_frac = None
         self.class_code_frac_loaded = False
-        self.list_of_all_compounds_created = False
-        self.list_of_all_deriv_compounds_created = False
-        self.calibrations_loaded = False
-        self.calibrations_not_present = False
         self.calibrations = {}
         self.is_calibrations_deriv = {}
+        self.calibrations_loaded = False
+        self.calibrations_not_present = False
         self.list_of_all_compounds = []
         self.list_of_all_deriv_compounds = []
-
-
-        self.class_code_frac = None
+        self.list_of_all_compounds_created = False
+        self.list_of_all_deriv_compounds_created = False
         self.compounds_properties = None
         self.deriv_compounds_properties = None
         self.compounds_properties_loaded = False
         self.deriv_compounds_properties_loaded = False
+        self.files = {}
+        self.is_files_deriv = {}
+        self.files_loaded = False
         self.iupac_to_files_added = False
         self.iupac_to_calibrations_added = False
         self.calibration_to_files_applied = False
         self.stats_to_files_info_added = False
-        self.stats_to_samples_info_added = False
+
         self.samples_info = None
-        self.list_of_created_param_reports = []
-        self.list_of_created_param_aggrreps = []
-        self.files = {}
-        self.files_loaded = False
-        self.is_files_deriv = {}
+        self.samples_info_created = False
+        self.stats_to_samples_info_added = False
         self.samples = {}
         self.samples_std = {}
-        self.reports = {}
-        self.reports_std = {}
-        self.aggrreps = {}
-        self.aggrreps_std = {}
-        self.deriv_samples_present = False
+        self.samples_created = False
+
+        self.list_of_files_param_reports = []
+        self.list_of_files_param_aggrreps = []
+        self.list_of_samples_param_reports = []
+        self.list_of_samples_param_aggrreps = []
+
+        self.files_reports = {}
+        self.files_aggrreps = {}
+        self.samples_reports = {}
+        self.samples_reports_std = {}
+        self.samples_aggrreps = {}
+        self.samples_aggrreps_std = {}
 
         self.load_files_info()
 
         if any(self.files_info['derivatized']):
-            self.deriv_samples_present = True
+            self.deriv_files_present = True
             print('Info: derivatized samples are present')
 
         self.load_calibrations()
 
         if rebuild_compounds_properties:
             self.create_compounds_properties()
-            if self.deriv_samples_present:
+            if self.deriv_files_present:
                 self.create_deriv_compounds_properties()
         else:
             self.load_compounds_properties()
-            if self.deriv_samples_present:
+            if self.deriv_files_present:
                 self.load_deriv_compounds_properties()
         # if apply_calibration:
         #     self.apply_calibration_to_files()
@@ -1616,7 +1620,7 @@ class Project:
         underivatized compounds'''
         if not self.compounds_properties_loaded:
             self.load_compounds_properties()
-        if self.deriv_samples_present:
+        if self.deriv_files_present:
             if not self.deriv_compounds_properties_loaded:
                 self.load_deriv_compounds_properties()
         for filename, file in self.files.items():
@@ -1641,7 +1645,7 @@ class Project:
         underivatized compounds'''
         if not self.compounds_properties_loaded:
             self.load_compounds_properties()
-        if self.deriv_samples_present:
+        if self.deriv_files_present:
             if not self.deriv_compounds_properties_loaded:
                 self.load_deriv_compounds_properties()
         for calibname, calib in self.calibrations.items():
@@ -1929,14 +1933,103 @@ class Project:
         self.stats_to_samples_info_added = True
         return self.samples_info
 
-    def create_param_report(self, param='conc_vial_mg_L', save_to_excel=True):
+    def create_files_param_report(self, param='conc_vial_mg_L',
+            save_to_excel=True):
+        """ create report with the results for each sample for each param
+        """
+        print('Info: create_files_param_report: ', param)
+
+        if not self.calibration_to_files_applied:
+            self.apply_calibration_to_files()
+        rep_columns = self.files_info.index
+        _all_comps = self.compounds_properties['iupac_name'].tolist()
+        if self.deriv_files_present:
+            _all_comps += self.deriv_compounds_properties['iupac_name'].tolist()
+        rep_index = list(set(_all_comps))
+        rep = pd.DataFrame(index=rep_index, columns=rep_columns, dtype='float')
+        rep.index.name = param
+
+        for comp in rep.index.tolist():  # add conc values
+            for name in rep.columns.tolist():
+                smp = self.files[name].set_index('iupac_name')
+                try:
+                    rep.loc[comp, name] = smp.loc[comp, param]
+                except KeyError:
+                    rep.loc[comp, name] = 0
+
+        rep = rep.sort_index(key=rep.max(1).get, ascending=False)
+        rep = rep.loc[:, rep.any(axis=0)] # drop columns with only 0s
+        rep = rep.loc[rep.any(axis=1), :] # drop rows with only 0s
+        self.files_reports[param] = rep
+        self.list_of_files_param_reports.append(param)
+        if save_to_excel:
+            self.save_files_param_report(param=param)
+        return rep
+
+    def create_files_param_aggrrep(self, param='conc_vial_mg_L',
+            save_to_excel=True):
+        """ create report with the results for each sample for each param
+        but aggrefated by functional group
+        """
+        print('Info: create_param_aggrrep: ', param)
+        if param not in self.list_of_files_param_reports:
+            self.create_files_param_report(param)
+        # fg = functional groups, mf = mass fraction
+        filenames = self.files_info.index.tolist()
+        _all_comps = self.files_reports[param].index.tolist()
+        cols_with_fg_mf_labs = list(self.compounds_properties)
+        if self.deriv_files_present:
+            for c in list(self.deriv_compounds_properties):
+                if c not in cols_with_fg_mf_labs:
+                    cols_with_fg_mf_labs.append(c)
+        fg_mf_labs = [c for c in cols_with_fg_mf_labs if c.startswith('fg_mf_')]
+        fg_labs = [c[6:] for c in fg_mf_labs]
+        # create a df with iupac name index and fg_mf columns (underiv and deriv)
+        comps_df = self.compounds_properties.set_index('iupac_name')
+        if self.deriv_files_present:
+            deriv_comps_df = self.deriv_compounds_properties.set_index('iupac_name')
+            all_comps_df = pd.concat([comps_df, deriv_comps_df])
+        else:
+            all_comps_df = comps_df
+        all_comps_df = all_comps_df[~all_comps_df.index.duplicated(keep='first')]
+        fg_mf_all = pd.DataFrame(index=_all_comps, columns=fg_mf_labs)
+        for idx in fg_mf_all.index.tolist():
+            fg_mf_all.loc[idx, fg_mf_labs] = all_comps_df.loc[idx, fg_mf_labs]
+        # create the aggregated dataframes and compute aggregated results
+        aggrrep = pd.DataFrame(columns=filenames, index=fg_labs,
+            dtype='float')
+        aggrrep.index.name = param  # is the parameter
+        aggrrep.fillna(0, inplace=True)
+        for col in filenames:
+            list_iupac = self.files_reports[param].index
+            signal = self.files_reports[param].loc[:, col].values
+            for fg, fg_mf in zip(fg_labs, fg_mf_labs):
+                # each compound contributes to the cumulative sum of each
+                # functional group for the based on the mass fraction it has
+                # of that functional group (fg_mf act as weights)
+                # if fg_mf in subrep: multiply signal for weigth and sum
+                # to get aggregated
+                weights = fg_mf_all.loc[list_iupac, fg_mf].astype(signal.dtype)
+
+                aggrrep.loc[fg, col] = (signal*weights).sum()
+        aggrrep = aggrrep.loc[(aggrrep != 0).any(axis=1), :]  # drop rows with only 0
+        aggrrep = aggrrep.sort_index(key=aggrrep[filenames].max(1).get,
+                            ascending=False)
+        self.files_aggrreps[param] = aggrrep
+        self.list_of_files_param_aggrreps.append(param)
+        if save_to_excel:
+            self.save_files_param_aggrrep(param=param)
+        return aggrrep
+
+    def create_samples_param_report(self, param='conc_vial_mg_L',
+            save_to_excel=True):
         """ create report with the results for each sample for each param
         """
         print('Info: create_param_report: ', param)
         if not self.samples_created:
             self.create_samples_from_files()
         _all_comps = self.compounds_properties['iupac_name'].tolist()
-        if self.deriv_samples_present:
+        if self.deriv_files_present:
             _all_comps += self.deriv_compounds_properties['iupac_name'].tolist()
         rep = pd.DataFrame(index=list(set(_all_comps)),
             columns=self.samples_info.index, dtype='float')
@@ -1963,25 +2056,26 @@ class Project:
         rep = rep.loc[:, rep.any(axis=0)] # drop columns with only 0s
         rep = rep.loc[rep.any(axis=1), :] # drop rows with only 0s
         rep_std = rep_std.reindex(rep.index)
-        self.reports[param] = rep
-        self.reports_std[param] = rep_std
-        self.list_of_created_param_reports.append(param)
+        self.samples_reports[param] = rep
+        self.samples_reports_std[param] = rep_std
+        self.list_of_samples_param_reports.append(param)
         if save_to_excel:
-            self.save_param_report(param=param)
+            self.save_samples_param_report(param=param)
         return rep, rep_std
 
-    def create_param_aggrrep(self, param='conc_vial_mg_L', save_to_excel=True):
+    def create_samples_param_aggrrep(self, param='conc_vial_mg_L',
+            save_to_excel=True):
         """ create report with the results for each sample for each param
         but aggrefated by functional group
         """
         print('Info: create_param_aggrrep: ', param)
-        if param not in self.list_of_created_param_reports:
-            self.create_param_report(param)
+        if param not in self.list_of_samples_param_reports:
+            self.create_samples_param_report(param)
         # fg = functional groups, mf = mass fraction
         samplenames = self.samples_info.index.tolist()
-        _all_comps = self.reports[param].index.tolist()
+        _all_comps = self.samples_reports[param].index.tolist()
         cols_with_fg_mf_labs = list(self.compounds_properties)
-        if self.deriv_samples_present:
+        if self.deriv_files_present:
             for c in list(self.deriv_compounds_properties):
                 if c not in cols_with_fg_mf_labs:
                     cols_with_fg_mf_labs.append(c)
@@ -1989,7 +2083,7 @@ class Project:
         fg_labs = [c[6:] for c in fg_mf_labs]
         # create a df with iupac name index and fg_mf columns (underiv and deriv)
         comps_df = self.compounds_properties.set_index('iupac_name')
-        if self.deriv_samples_present:
+        if self.deriv_files_present:
             deriv_comps_df = self.deriv_compounds_properties.set_index('iupac_name')
             all_comps_df = pd.concat([comps_df, deriv_comps_df])
         else:
@@ -2008,9 +2102,9 @@ class Project:
         aggrrep_std.index.name = param  # is the parameter
         aggrrep_std.fillna(0, inplace=True)
         for col in samplenames:
-            list_iupac = self.reports[param].index
-            signal = self.reports[param].loc[:, col].values
-            signal_std = self.reports_std[param].loc[:, col].values
+            list_iupac = self.samples_reports[param].index
+            signal = self.samples_reports[param].loc[:, col].values
+            signal_std = self.samples_reports_std[param].loc[:, col].values
             for fg, fg_mf in zip(fg_labs, fg_mf_labs):
                 # each compound contributes to the cumulative sum of each
                 # functional group for the based on the mass fraction it has
@@ -2027,11 +2121,11 @@ class Project:
                             ascending=False)
         aggrrep_std = aggrrep_std.reindex(aggrrep.index)
 
-        self.aggrreps[param] = aggrrep
-        self.aggrreps_std[param] = aggrrep_std
-        self.list_of_created_param_aggrreps.append(param)
+        self.samples_aggrreps[param] = aggrrep
+        self.samples_aggrreps_std[param] = aggrrep_std
+        self.list_of_samples_param_aggrreps.append(param)
         if save_to_excel:
-            self.save_param_aggrrep(param=param)
+            self.save_samples_param_aggrrep(param=param)
         return aggrrep, aggrrep_std
 
     def save_files_info(self):
@@ -2065,30 +2159,52 @@ class Project:
         sample_std.to_excel(plib.Path(out_path, samplename + '_std.xlsx'))
         print('Info: save_sample: ', samplename,'saved')
 
-    def save_param_report(self, param='conc_inj_mg_L'):
+    def save_files_param_report(self, param='conc_inj_mg_L'):
         """ save param report to MultiReport folder
         """
-        if param not in self.list_of_created_param_reports:
-            self.create_param_report(param)
-        name = 'Rep_' + param
-        out_path = plib.Path(Project.out_path, 'reports')
+        if param not in self.list_of_files_param_reports:
+            self.create_files_param_report(param)
+        name = 'rep_files_' + param
+        out_path = plib.Path(Project.out_path, 'files_reports')
         out_path.mkdir(parents=True, exist_ok=True)
-        self.reports[param].to_excel(plib.Path(out_path, name + '.xlsx'))
-        self.reports_std[param].to_excel(plib.Path(out_path, name + '_std.xlsx'))
-        print('Info: save_param_report: Rep_' + param,'saved')
+        self.files_reports[param].to_excel(plib.Path(out_path, name + '.xlsx'))
+        print('Info: save_files_param_report: ', name,' saved')
 
-    def save_param_aggrrep(self, param='conc_inj_mg_L'):
+    def save_files_param_aggrrep(self, param='conc_inj_mg_L'):
         """ save param aggregated report to MultiReport folder """
-        if param not in self.list_of_created_param_aggrreps:
-            self.create_param_aggrrep(param)
-        name = 'AggregRep_' + param
-        out_path = plib.Path(Project.out_path, 'aggregated_reports')
+        if param not in self.list_of_files_param_aggrreps:
+            self.create_files_param_aggrrep(param)
+        name = 'aggreg_files_rep_' + param
+        out_path = plib.Path(Project.out_path, 'aggr_files_reports')
         out_path.mkdir(parents=True, exist_ok=True)
-        self.aggrreps[param].to_excel(plib.Path(out_path, name + '.xlsx'))
-        self.aggrreps_std[param].to_excel(plib.Path(out_path, name + '_std.xlsx'))
-        print('Info: save_param_aggrrep: AggregRep_' + param,'saved')
+        self.files_aggrreps[param].to_excel(plib.Path(out_path, name + '.xlsx'))
+        print('Info: save_files_param_aggrrep: ', name,' saved')
 
-    def plot_ave_std(self, filename='plot',
+    def save_samples_param_report(self, param='conc_inj_mg_L'):
+        """ save param report to MultiReport folder
+        """
+        if param not in self.list_of_samples_param_reports:
+            self.create_samples_param_report(param)
+        name = 'rep_samples_' + param
+        out_path = plib.Path(Project.out_path, 'samples_reports')
+        out_path.mkdir(parents=True, exist_ok=True)
+        self.samples_reports[param].to_excel(plib.Path(out_path, name + '.xlsx'))
+        self.samples_reports_std[param].to_excel(plib.Path(out_path,
+            name + '_std.xlsx'))
+        print('Info: save_samples_param_report: ', name,' saved')
+
+    def save_samples_param_aggrrep(self, param='conc_inj_mg_L'):
+        """ save param aggregated report to MultiReport folder """
+        if param not in self.list_of_samples_param_aggrreps:
+            self.create_samples_param_aggrrep(param)
+        name = 'aggreg_samples_rep_' + param
+        out_path = plib.Path(Project.out_path, 'aggr_samples_reports')
+        out_path.mkdir(parents=True, exist_ok=True)
+        self.samples_aggrreps[param].to_excel(plib.Path(out_path, name + '.xlsx'))
+        self.samples_aggrreps_std[param].to_excel(plib.Path(out_path, name + '_std.xlsx'))
+        print('Info: save_samples_param_aggrrep: ', name,' saved')
+
+    def plot_ave_std(self, filename='plot', files_or_samples='samples',
         param='conc_vial_mg_L', aggr=False, min_y_thresh=None,
         only_samples_to_plot=None, rename_samples=None, reorder_samples=None,
         item_to_color_to_hatch=None,
@@ -2110,28 +2226,40 @@ class Project:
         out_path = plib.Path(Project.out_path, 'plots')
         out_path.mkdir(parents=True, exist_ok=True)
         if not aggr:  # then use compounds reports
-            df_ave = self.reports[param].T
-            df_std = self.reports_std[param].T
+            if files_or_samples == 'files':
+                df_ave = self.files_reports[param].T
+                df_std = pd.DataFrame()
+            elif files_or_samples == 'samples':
+                df_ave = self.samples_reports[param].T
+                df_std = self.samples_reports_std[param].T
         else:  # use aggregated reports
-            df_ave = self.aggrreps[param].T
-            df_std = self.aggrreps_std[param].T
+            if files_or_samples == 'files':
+                df_ave = self.files_aggrreps[param].T
+                df_std = pd.DataFrame()
+            elif files_or_samples == 'samples':
+                df_ave = self.samples_aggrreps[param].T
+                df_std = self.samples_aggrreps_std[param].T
 
         if only_samples_to_plot is not None:
             df_ave = df_ave.loc[only_samples_to_plot, :].copy()
-            df_std = df_std.loc[only_samples_to_plot, :].copy()
+            if files_or_samples == 'samples':
+                df_std = df_std.loc[only_samples_to_plot, :].copy()
 
         if rename_samples is not None:
             df_ave.index = rename_samples
-            df_std.index = rename_samples
+            if files_or_samples == 'samples':
+                df_std.index = rename_samples
 
         if reorder_samples is not None:
             filtered_reorder_samples = [idx for idx in reorder_samples if idx in df_ave.index]
             df_ave = df_ave.reindex(filtered_reorder_samples)
-            df_std = df_std.reindex(filtered_reorder_samples)
+            if files_or_samples == 'samples':
+                df_std = df_std.reindex(filtered_reorder_samples)
 
         if min_y_thresh is not None:
             df_ave = df_ave.loc[:, (df_ave > min_y_thresh).any(axis=0)].copy()
-            df_std = df_std.loc[:, df_ave.columns].copy()
+            if files_or_samples == 'samples':
+                df_std = df_std.loc[:, df_ave.columns].copy()
 
         if item_to_color_to_hatch is not None:  # specific color and hatches to each fg
             colors = [item_to_color_to_hatch.loc[item, 'clr'] for item in df_ave.columns]
@@ -2150,9 +2278,9 @@ class Project:
 
         fig, ax, axt, fig_par = figure_create(rows=1, cols=1, plot_type=plot_type,
             paper_col=paper_col, hgt_mltp=fig_hgt_mlt, font=Project.plot_font)
-        if df_std.isna().all().all():  # means that no std is provided
+        if df_std.isna().all().all() or df_std.empty:  # means that no std is provided
             df_ave.plot(ax=ax[0], kind='bar', rot=xlab_rot, width=.9,
-                        edgecolor='k', legend=False, yerr=df_std,
+                        edgecolor='k', legend=False,
                         capsize=3, color=colors)
             bars = ax[0].patches  # needed to add patches to the bars
             n_different_hatches = int(len(bars)/df_ave.shape[0])
@@ -2171,7 +2299,7 @@ class Project:
             axt[0].scatter(df_ave.index, df_ave.sum(axis=1).values,
                         color='k', linestyle='None', edgecolor='k',
                         facecolor='grey', s=100, label=yt_sum_label, alpha=.5)
-            if df_std is not None:
+            if not df_std.empty:
                 axt[0].errorbar(df_ave.index, df_ave.sum(axis=1).values,
                                 df_std.sum(axis=1).values, capsize=3,
                                 linestyle='None', color='grey', ecolor='k')
@@ -2193,7 +2321,7 @@ class Project:
                 rotation_mode='anchor')
         if legend_location is not None:
             hnd_ax, lab_ax = ax[0].get_legend_handles_labels()
-            if df_std is not None:
+            if not df_std.empty:
                 hnd_ax = hnd_ax[:len(hnd_ax)//2]
                 lab_ax = lab_ax[:len(lab_ax)//2]
             if legend_labelspacing > 0.5:  # large legend spacing for molecules
@@ -2215,7 +2343,7 @@ class Project:
                     loc=legend_location, ncol=legend_columns,
                     labelspacing=legend_labelspacing)
         # annotate ave+-std at the top of outliers bar (exceeding y_lim)
-        if annotate_outliers and (y_lim is not None) and (df_std is not None):
+        if annotate_outliers and (y_lim is not None) and (not df_std.empty):
             _annotate_outliers_in_plot(ax[0], df_ave, df_std, y_lim)
         if note_plt:
             ax[0].annotate(note_plt, ha='left', va='bottom',
@@ -2224,7 +2352,7 @@ class Project:
                 y_lab=y_lab, yt_lab=yt_lab, y_lim=y_lim, yt_lim=yt_lim, legend=False,
                 y_ticks=y_ticks, yt_ticks=yt_ticks, tight_layout=True,
                 annotate_lttrs=annotate_lttrs, grid=Project.plot_grid)
-
+#%%
 if __name__ == '__main__':
     folder_path = plib.Path(r"C:\Users\mp933\OneDrive - Cornell University\Python\gcms_data_analysis\example\data")
 
@@ -2239,7 +2367,7 @@ if __name__ == '__main__':
     files_info_0 = p.load_files_info()
     # load the provided calibrations as dict, store bool to know if are deriv
     calibrations, is_calibr_deriv = p.load_calibrations()
-    c1, c2 = calibrations['CalDB'], calibrations['CalDBder']
+    c1, c2 = calibrations['calibration'], calibrations['deriv_calibration']
     # load provided classificaiton codes and mass fractions for fun. groups
     class_code_frac = p.load_class_code_frac()
     # load all GCMS txt files as single files
@@ -2269,13 +2397,26 @@ if __name__ == '__main__':
     # add stats to samples_info df
     samples_info = p.add_stats_to_samples_info()
     # create report (compounds based) for different parameters
-    rep_conc, rep_conc_std = p.create_param_report(param='conc_vial_mg_L')
-    rep_sample_fr, rep_sample_fr_std = p.create_param_report(param='fraction_of_sample_fr')
+    rep_files_conc = p.create_files_param_report(param='conc_vial_mg_L')
+    rep_files_fr= p.create_files_param_report(param='fraction_of_sample_fr')
+    rep_samples_conc, rep_samples_conc_std = p.create_samples_param_report(param='conc_vial_mg_L')
+    rep_samples_fr, rep_samples_fr_std = p.create_samples_param_report(param='fraction_of_sample_fr')
     # create aggreport (functionl group aggreageted based) for different parameters
-    agg_conc, agg_conc_std = p.create_param_aggrrep(param='conc_vial_mg_L')
-    agg_sample_fr, agg_sample_fr_std = p.create_param_aggrrep(param='fraction_of_sample_fr')
+    agg_files_conc = p.create_files_param_aggrrep(param='conc_vial_mg_L')
+    agg_files_fr = p.create_files_param_aggrrep(param='fraction_of_sample_fr')
+    agg_samples_conc, agg_samples_conc_std = p.create_samples_param_aggrrep(param='conc_vial_mg_L')
+    agg_samples_fr, agg_samples_fr_std = p.create_samples_param_aggrrep(param='fraction_of_sample_fr')
     # plot results bases on report
     #%%
+    p.plot_ave_std(param='fraction_of_sample_fr', min_y_thresh=0, files_or_samples='files',
+        legend_location='outside',
+        only_samples_to_plot=['A_1', 'A_2', 'Ader_1', 'Ader_2'], #y_lim=[0, 5000]
+             )
+    # plot results bases on aggreport
+    p.plot_ave_std(param='fraction_of_sample_fr', aggr=True, files_or_samples='files',
+                    min_y_thresh=0.01,
+        y_lim=[0, .5], color_palette='Set2')
+
     p.plot_ave_std(param='fraction_of_sample_fr', min_y_thresh=0,
         legend_location='outside', only_samples_to_plot=['A', 'Ader'], #y_lim=[0, 5000]
              )
