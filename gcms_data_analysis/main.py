@@ -1199,7 +1199,8 @@ class Project:
     compounds_to_rename = {}
     param_to_axis_label = {'area': 'Peak Area [-]',
         'area_if_undiluted': 'Peak Area [-]',
-        'conc_vial_mg_L':'vial conc. [mg/L] (ppm)',
+        'conc_vial_mg_L':'conc. [mg/L] (ppm)',
+        'conc_vial_if_undiluted_mg_L':'conc. [mg/L] (ppm)',
         'fraction_of_sample_fr':'mass fraction [g/g$_{sample}$]',
         'fraction_of_feedstock_fr': 'mass fraction [g/g$_{feedstock}$]'}
     string_in_deriv_names = ['deriv.', 'derivative', 'TMS', 'TBDMS', 'trimethylsilyl']

@@ -6,7 +6,7 @@ with open("README.md", 'r', encoding="utf-8") as f:
 
 setup(
     name='gcms_data_analysis',  # Replace with your own package name
-    version='0.1.4',  # Start with a small version number and increment it with each release
+    version='0.1.5',  # Start with a small version number and increment it with each release
     author='mpecchi',  # Replace with your name
     description='Tool for automatic analysis of multiple HPLC results',  # Provide a short description
     long_description=description,  # This will read your README file to use as the long description
