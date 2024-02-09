@@ -1187,6 +1187,7 @@ class Project:
     in_path = folder_path
     out_path = plib.Path(in_path, 'output')
     shared_path = in_path.parents[0]
+    auto_save_to_excel=True
     plot_font='Dejavu Sans'
     plot_grid=False
     load_delimiter = '\t'
@@ -1217,6 +1218,11 @@ class Project:
         cls.out_path = plib.Path(cls.in_path, 'output')
         plib.Path(cls.out_path).mkdir(parents=True, exist_ok=True)
         cls.shared_path = cls.in_path.parents[0]
+
+    @classmethod
+    def set_auto_save_to_excel(cls, new_auto_save_to_excel):
+        """ Update plot font """
+        cls.auto_save_to_excel = new_auto_save_to_excel
 
     @classmethod
     def set_plot_font(cls, new_plot_font):
@@ -1686,7 +1692,7 @@ class Project:
                 df_comps = self.deriv_compounds_properties
             file = self._apply_calib_to_file(filename, calibration,
                 df_comps)
-            if save_to_excel:
+            if Project.auto_save_to_excel:
                 self.save_file(file, filename)
         self.calibration_to_files_applied = True
         return self.files, self.is_files_deriv
@@ -1792,7 +1798,8 @@ class Project:
                         conc_mg_l = np.nan
                         comps_for_calib = 'n.a.'
             self.files[filename].loc[comp, 'conc_vial_mg_L'] = conc_mg_l
-
+            self.files[filename].loc[comp, 'conc_vial_if_undiluted_mg_L'] = \
+                conc_mg_l * self.files_info.loc[filename, 'dilution_factor']
             self.files[filename].loc[comp,
                 'fraction_of_sample_fr'] = conc_mg_l/tot_sample_conc
             self.files[filename].loc[comp,
@@ -1814,6 +1821,8 @@ class Project:
             #
             self.files_info.loc[name, 'max_conc_vial_mg_L'] = \
                 df['conc_vial_mg_L'].max()
+            self.files_info.loc[name, 'max_conc_vial_if_undiluted_mg_L'] = \
+                df['conc_vial_if_undiluted_mg_L'].max()
             self.files_info.loc[name, 'max_fraction_of_sample_fr'] = \
                 df['fraction_of_sample_fr'].max()
             self.files_info.loc[name, 'fraction_of_feedstock_fr'] = \
@@ -1822,6 +1831,8 @@ class Project:
             self.files_info.loc[name, 'total_area'] = df['area'].sum()
             self.files_info.loc[name, 'total_conc_vial_mg_L'] = \
                 df['conc_vial_mg_L'].sum()
+            self.files_info.loc[name, 'total_conc_vial_if_undiluted_mg_L'] = \
+                df['conc_vial_if_undiluted_mg_L'].sum()
             self.files_info.loc[name, 'total_fraction_of_sample_fr'] = \
                 df['fraction_of_sample_fr'].sum()
             self.files_info.loc[name, 'total_fraction_of_feedstock_fr'] = \
@@ -1829,7 +1840,7 @@ class Project:
             self.files_info.loc[name, 'compound_with_max_conc'] = \
                 df[df['conc_vial_mg_L'] ==
                    self.files_info.loc[name, 'max_conc_vial_mg_L']].index[0]
-        if save_to_excel:
+        if Project.auto_save_to_excel:
             self.save_files_info()
         self.stats_to_files_info_added = True
         return self.files_info
@@ -1864,7 +1875,7 @@ class Project:
                 self._create_sample_from_files(_files, samplename)
             self.samples[samplename] = sample
             self.samples_std[samplename] = sample_std
-            if save_to_excel:
+            if Project.auto_save_to_excel:
                 self.save_sample(sample, sample_std, samplename)
         self.samples_created = True
         return self.samples, self.samples_std
@@ -1912,6 +1923,8 @@ class Project:
             #
             self.samples_info.loc[name, 'max_conc_vial_mg_L'] = \
                 df['conc_vial_mg_L'].max()
+            self.samples_info.loc[name, 'max_conc_vial_if_undiluted_mg_L'] = \
+                df['conc_vial_if_undiluted_mg_L'].max()
             self.samples_info.loc[name, 'max_fraction_of_sample_fr'] = \
                 df['fraction_of_sample_fr'].max()
             self.samples_info.loc[name, 'fraction_of_feedstock_fr'] = \
@@ -1920,6 +1933,8 @@ class Project:
             self.samples_info.loc[name, 'total_area'] = df['area'].sum()
             self.samples_info.loc[name, 'total_conc_vial_mg_L'] = \
                 df['conc_vial_mg_L'].sum()
+            self.samples_info.loc[name, 'total_conc_vial_if_undiluted_mg_L'] = \
+                df['conc_vial_if_undiluted_mg_L'].sum()
             self.samples_info.loc[name, 'total_fraction_of_sample_fr'] = \
                 df['fraction_of_sample_fr'].sum()
             self.samples_info.loc[name, 'total_fraction_of_feedstock_fr'] = \
@@ -1928,7 +1943,7 @@ class Project:
                 df[df['conc_vial_mg_L'] ==
                    self.samples_info.loc[name, 'max_conc_vial_mg_L']].index[0]
         self.stats_to_samples_info_added = True
-        if save_to_excel:
+        if Project.auto_save_to_excel:
             self.save_samples_info()
         self.stats_to_samples_info_added = True
         return self.samples_info
@@ -1963,7 +1978,7 @@ class Project:
         rep = rep.loc[rep.any(axis=1), :] # drop rows with only 0s
         self.files_reports[param] = rep
         self.list_of_files_param_reports.append(param)
-        if save_to_excel:
+        if Project.auto_save_to_excel:
             self.save_files_param_report(param=param)
         return rep
 
@@ -2018,7 +2033,7 @@ class Project:
                             ascending=False)
         self.files_aggrreps[param] = aggrrep
         self.list_of_files_param_aggrreps.append(param)
-        if save_to_excel:
+        if Project.auto_save_to_excel:
             self.save_files_param_aggrrep(param=param)
         return aggrrep
 
@@ -2060,7 +2075,7 @@ class Project:
         self.samples_reports[param] = rep
         self.samples_reports_std[param] = rep_std
         self.list_of_samples_param_reports.append(param)
-        if save_to_excel:
+        if Project.auto_save_to_excel:
             self.save_samples_param_report(param=param)
         return rep, rep_std
 
@@ -2125,7 +2140,7 @@ class Project:
         self.samples_aggrreps[param] = aggrrep
         self.samples_aggrreps_std[param] = aggrrep_std
         self.list_of_samples_param_aggrreps.append(param)
-        if save_to_excel:
+        if Project.auto_save_to_excel:
             self.save_samples_param_aggrrep(param=param)
         return aggrrep, aggrrep_std
 
