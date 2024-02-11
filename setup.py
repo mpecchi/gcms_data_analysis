@@ -1,14 +1,15 @@
 from setuptools import setup, find_packages
 
 
+# run the script_to_update_readme.py before
 with open("README.md", 'r', encoding="utf-8") as f:
-    description = f.read()
+    readmecontent = f.read()
 
 setup(
     name='gcms_data_analysis',  # Replace with your own package name
-    version='0.1.5',  # Start with a small version number and increment it with each release
-    author='mpecchi',  # Replace with your name
-    description='Tool for automatic analysis of multiple HPLC results',  # Provide a short description
+    version='0.1.6',  # Start with a small version number and increment it with each release
+    author='Matteo Pecchi',  # Replace with your name
+    description='Automatic analysis of GC-MS data',  # Provide a short description
     long_description=description,  # This will read your README file to use as the long description
     long_description_content_type='text/markdown',  # This is the format of your README file
     url='https://github.com/mpecchi/gcms_data_analysis/tree/main',  # Replace with the URL of your project
