@@ -1,6 +1,7 @@
 import pathlib as plib
 
 def update_readme_with_example():
+    """ used to include formatted example in the README.md """
     readme_path = plib.Path(plib.Path(__file__).parent.parent, 'README.md')
     example_script_path = plib.Path(plib.Path(__file__).parent.parent,
                                     'example/example_gcms_data_analysis.py')
