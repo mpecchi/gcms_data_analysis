@@ -1,4 +1,4 @@
-# PyGCMS
+# gcms_data_analysis
 
 ## A Python tool to manage multiple GCMS qualitative tables and automatically split chemicals into functional groups.
 
