@@ -1306,7 +1306,7 @@ class Project:
         """
         """
         self.files_info = None
-        self.files_info_loaded = False
+        self.files_info_created = False
         self.deriv_files_present = False
         self.class_code_frac = None
         self.class_code_frac_loaded = False
@@ -1371,7 +1371,7 @@ class Project:
         files. If the file is not found, it creates a new 'files_info' DataFrame with
         default values based on the GCMS files present in the project's input path and
         saves it to 'files_info.xlsx'. This method ensures 'files_info' is loaded with
-        necessary defaults and updates the class attribute 'files_info_loaded' to True."""
+        necessary defaults and updates the class attribute 'files_info_created' to True."""
         try:
             self.files_info = pd.read_excel(plib.Path(Project.in_path, 'files_info.xlsx'),
                 engine='openpyxl', index_col='filename')
@@ -1383,7 +1383,7 @@ class Project:
             self.create_files_info()
             self._add_default_to_files_info()
         self.files_info.to_excel(plib.Path(Project.in_path, 'files_info.xlsx'))
-        self.files_info_loaded = True
+        self.files_info_created = True
         return self.files_info
 
     def create_files_info(self):
@@ -1394,10 +1394,10 @@ class Project:
         print('Info: autocreating files_info')
         filename = [a.parts[-1].split('.')[0]
             for a in list(Project.in_path.glob('**/*.txt'))]
-        sample = [f.split('_')[0] for f in filename]
-        replicate = [f.split('_')[1] for f in filename]
+        samplename = [f.split('_')[0] for f in filename]
+        replicate_number = [f.split('_')[1] for f in filename]
         self.files_info = pd.DataFrame({'filename':filename,
-                                'sample':sample, 'replicate':replicate})
+            'samplename':samplename, 'replicate_number':replicate_number})
         self.files_info.set_index('filename', drop=True, inplace=True)
         self.files_info.to_excel(plib.Path(Project.in_path, 'files_info.xlsx'))
 
@@ -1406,8 +1406,8 @@ class Project:
         This method ensures that every necessary column exists in 'files_info', filling
         missing ones with default values or false flags, applicable for both user-provided
         and automatically created 'files_info' DataFrames."""
-        if 'sample' not in list(self.files_info):
-            self.files_info['sample'] = \
+        if 'samplename' not in list(self.files_info):
+            self.files_info['samplename'] = \
                 [f.split('_')[0] for f in self.files_info.index.tolist()]
         if 'derivatized' not in list(self.files_info):
             self.files_info['derivatized'] = False
@@ -1902,12 +1902,12 @@ class Project:
         """Creates a summary 'samples_info' DataFrame from 'files_info',
         aggregating data for each sample, and updates the 'samples_info'
         attribute with this summarized data."""
-        if not self.files_info_loaded:
+        if not self.files_info_created:
             self.load_files_info()
         _samples_info = self.files_info.reset_index(
-            ).groupby('sample').agg(list)
+            ).groupby('samplename').agg(list)
         _samples_info.reset_index(inplace=True)
-        _samples_info.set_index('sample', drop=True, inplace=True)
+        _samples_info.set_index('samplename', drop=True, inplace=True)
         self.samples_info = _samples_info
         self.samples_info_created = True
         print('Info: create_samples_info: samples_info created')
@@ -1923,7 +1923,7 @@ class Project:
             print('Sample: ', samplename)
             _files = []
             for filename in self.files_info.index[
-                self.files_info['sample'] == samplename]:
+                self.files_info['samplename'] == samplename]:
                 print('\tFile: ', filename)
                 _files.append(self.files[filename])
             sample, sample_std = \
@@ -1984,7 +1984,7 @@ class Project:
                 df['conc_vial_if_undiluted_mg_L'].max()
             self.samples_info.loc[name, 'max_fraction_of_sample_fr'] = \
                 df['fraction_of_sample_fr'].max()
-            self.samples_info.loc[name, 'fraction_of_feedstock_fr'] = \
+            self.samples_info.loc[name, 'max_fraction_of_feedstock_fr'] = \
                 df['fraction_of_feedstock_fr'].max()
             # total values
             self.samples_info.loc[name, 'total_area'] = df['area'].sum()
