@@ -1,0 +1,16 @@
+[Header]
+Data File Name	C:\Users\user\Documents\mp933\20230329_M1 to 12\M12_SCNN1000_rxi300rt5sr10_4.qgd
+Output Date	3/30/2023
+Output Time	12:26:16 PM
+
+[MC Peak Table]
+# of Peaks	165
+Mass	TIC
+Peak#	Ret.Time	Proc.From	Proc.To	Mass	Area	Height	A/H	Conc.	Mark	Name	Ret. Index	Area%	Height%	SI	CAS #
+3	8.527	8.493	8.647	TIC	147566	39393	3.75	0.38	   	2-Butanone		0.38	0.59	94	78-93-3
+4	10.507	10.440	10.587	TIC	69223	18515	3.74	0.18	   	2-Cyclopenten-1-one, 2-methyl-		0.18	0.28	91	1120-73-6
+7	11.071	11.033	11.127	TIC	40376	12132	3.33	0.10	 V 	trans-2-Pentenoic acid		0.10	0.18	88	13991-37-2
+8	11.486	11.413	11.613	TIC	441077	112797	3.91	1.14	   	2,5-Hexanedione		1.14	1.69	98	110-13-4
+9	12.214	12.167	12.247	TIC	19522	7194	2.71	0.05	   	1-Hexene, 4,5-dimethyl-		0.05	0.11	76	16106-59-5
+15	13.687	13.620	13.767	TIC	200947	64421	3.12	0.52	   	Phenol		0.52	0.97	97	108-95-2
+

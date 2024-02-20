@@ -1,0 +1,16 @@
+[Header]
+Data File Name	C:\Users\user\Documents\mp933\ASE Matrix Day 2\FW SCDD 8_1_rxi300rt5sr10_14.qgd
+Output Date	4/14/2023
+Output Time	11:47:54 AM
+
+[MC Peak Table]
+# of Peaks	14
+Mass	TIC
+Peak#	Ret.Time	Proc.From	Proc.To	Mass	Area	Height	A/H	Conc.	Mark	Name	Ret. Index	Area%	Height%	SI	CAS #
+1	6.027	6.013	6.047	TIC	16741	13451	1.24	0.33	   			0.33	0.80	0	0-0-0
+2	38.123	38.067	38.180	TIC	49508	18415	2.69	0.98	   	Myristic acid, TMS derivative		0.98	1.10	93	18603-17-3
+3	41.729	41.680	41.800	TIC	27798	9132	3.04	0.55	   	Palmitelaidic acid, TMS derivative		0.55	0.54	91	82326-15-6
+4	42.157	42.067	42.247	TIC	1415205	484890	2.92	28.01	   	Palmitic Acid, TMS derivative		28.01	28.93	94	55520-89-3
+6	45.253	45.187	45.307	TIC	519476	180850	2.87	10.28	   	9,12-Octadecadienoic acid (Z,Z)-, TMS derivative		10.28	10.79	95	56259-7-5
+7	45.369	45.307	45.440	TIC	1581666	501749	3.15	31.31	 V 	9-Octadecenoic acid, (Z)-, TMS derivative		31.31	29.94	94	96851-47-7
+8	45.492	45.440	45.600	TIC	143148	39018	3.67	2.83	 V 	9-Octadecenoic acid, (Z)-, TMS derivative		2.83	2.33	93	21556-26-3

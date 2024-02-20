@@ -1,5 +1,4 @@
 import pytest
-import pandas as pd
 from pandas.testing import assert_frame_equal
 
 
@@ -32,7 +31,8 @@ def test_load_all_files(gcms, checked_files, checked_is_files_deriv):
 
 def test_load_all_files_wrong_names(gcms):
     wrong_files_info = gcms.create_files_info()
-    wrong_files_info.index = ['Wrong_filename'] + wrong_files_info.index.tolist()[1:]
+    wrong_files_info.index = \
+        ['Wrong_filename'] + wrong_files_info.index.tolist()[1:]
     gcms.files_info = wrong_files_info
     with pytest.raises(FileNotFoundError):
         gcms.load_all_files()
@@ -64,8 +64,8 @@ def test_load_calibrations_only_one_file(gcms, checked_load_calibrations,
         {k: checked_load_calibrations[k] for k in [calibration_name]}
     checked_is_calibrations_deriv_only_underiv = \
         {k: checked_is_calibrations_deriv[k] for k in [calibration_name]}
-    gcms.files_info = \
-        gcms.files_info[gcms.files_info['calibration_file'] == calibration_name]
+    files_info = gcms.create_files_info()
+    gcms.files_info = files_info[files_info['calibration_file'] == calibration_name]
     calib_to_check, is_calib_deriv_to_check = gcms.load_calibrations()
     for to_check, checked in zip(calib_to_check, checked_load_calibrations_only_underiv):
         assert to_check == checked
@@ -79,6 +79,7 @@ def test_load_calibrations_only_one_file(gcms, checked_load_calibrations,
 
 @pytest.mark.parametrize("calibration_name", [False, None])
 def test_load_calibrations_false_or_none(gcms, calibration_name):
+    _ = gcms.create_files_info()
     gcms.files_info['calibration_file'] = calibration_name
     calib_to_check, is_calib_deriv_to_check = gcms.load_calibrations()
     assert calib_to_check == {}
@@ -169,6 +170,7 @@ def test_create_samples_info(gcms, checked_samples_info):
         check_exact=False, atol=1e-5, rtol=1e-5)
 
 def test_add_stats_to_samples_info_no_calibrations(gcms, checked_samples_info_no_calibrations):
+    _ = gcms.create_files_info()
     gcms.files_info['calibration_file'] = False
     gcms.load_calibrations()
     _ = gcms.add_stats_to_files_info()

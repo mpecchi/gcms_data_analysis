@@ -4,6 +4,7 @@
 example/data/output/
 example/data/compounds_properties.xlsx
 example/data/deriv_compounds_properties.xlsx
+tests/data_for_testing/output/
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/

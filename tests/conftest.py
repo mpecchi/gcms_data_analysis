@@ -1,53 +1,13 @@
+import pathlib as plib
+import pandas as pd
+import numpy as np
 import pytest
 from gcms_data_analysis.main import Project
-import pathlib as plib
-import pandas as pd
-import numpy as np
-"""
-from gcms_data_analysis.main import Project
-import pathlib as plib
-import pandas as pd
-import numpy as np
-from pandas.testing import assert_frame_equal
-
-example_data_path = plib.Path(plib.Path(__file__).parent.parent,
-    'example/data/')
-Project.set_folder_path(example_data_path)
-gcms = Project()
-"""
-#%%
-def print_df_to_script(df):
-    # Convert the DataFrame to a dictionary with 'list' orientation
-    df_dict = df.to_dict(orient='list')
-
-    # Convert the index to a list and get the index name
-    index_list = df.index.tolist()
-    index_name = df.index.name
-
-    # Print the DataFrame reconstruction code with the index at the top
-    print("pd.DataFrame(")
-    # Print the index part first
-    if index_name is not None:
-        print(f"    index=pd.Index({index_list}, name='{index_name}'),")
-    else:
-        print(f"    index={index_list},")
-
-    # Start printing the data dictionary
-    print("    data={")
-    # Print each column's data
-    for key, values in df_dict.items():
-        print(f"        '{key}': {values},")
-    # Close the data dictionary
-    print("    }")
-    # Close the DataFrame construction
-    print(")")
-#%%
 
 @pytest.fixture
 def gcms():
-    example_data_path = plib.Path(plib.Path(__file__).parent.parent,
-                                  'example/data/')
-    Project.set_folder_path(example_data_path)
+    folder_path = plib.Path(plib.Path(__file__).parent.parent, 'tests/data_for_testing/')
+    Project.set_folder_path(folder_path)
     return Project()
 
 @pytest.fixture
@@ -56,7 +16,6 @@ def checked_files_info():
         index=pd.Index(['A_1', 'A_2', 'Ader_1', 'Ader_2', 'B_1', 'B_2'], name='filename'),
         data={
             'samplename': ['A', 'A', 'Ader', 'Ader', 'B', 'B'],
-            'file_label': ['A_1', 'A_2', 'Ader_1', 'Ader_2', 'B_1', 'B_2'],
             'derivatized': [False, False, True, True, False, False],
             'dilution_factor': [25, 25, 125, 125, 1, 1],
             'total_sample_conc_in_vial_mg_L': [560.0000000000001, 560.0000000000001, 112.0, 112.0, 2800.0, 2800.0],
@@ -455,7 +414,6 @@ def checked_files_info_added_stats():
         index=pd.Index(['A_1', 'A_2', 'Ader_1', 'Ader_2', 'B_1', 'B_2'], name='filename'),
         data={
             'samplename': ['A', 'A', 'Ader', 'Ader', 'B', 'B'],
-            'file_label': ['A_1', 'A_2', 'Ader_1', 'Ader_2', 'B_1', 'B_2'],
             'derivatized': [False, False, True, True, False, False],
             'dilution_factor': [25, 25, 125, 125, 1, 1],
             'total_sample_conc_in_vial_mg_L': [560.0000000000001, 560.0000000000001, 112.0, 112.0, 2800.0, 2800.0],
@@ -486,7 +444,7 @@ def checked_samples_info():
     samples_info = pd.DataFrame(
         index=pd.Index(['A', 'Ader', 'B'], name='samplename'),
         data={
-            'file_label': [['A_1', 'A_2'], ['Ader_1', 'Ader_2'], ['B_1', 'B_2']],
+            'filename': [['A_1', 'A_2'], ['Ader_1', 'Ader_2'], ['B_1', 'B_2']],
             'derivatized': [[False, False], [True, True], [False, False]],
             'dilution_factor': [[25, 25], [125, 125], [1, 1]],
             'total_sample_conc_in_vial_mg_L': [[560.0000000000001, 560.0000000000001], [112.0, 112.0], [2800.0, 2800.0]],
@@ -501,19 +459,20 @@ def checked_samples_info_no_calibrations():
     samples_info = pd.DataFrame(
         index=pd.Index(['A', 'Ader', 'B'], name='samplename'),
         data={
-            'file_label': [['A_1', 'A_2'], ['Ader_1', 'Ader_2'], ['B_1', 'B_2']],
-            'derivatized': [[False, False], [True, True], [False, False]],
-            'dilution_factor': [[25, 25], [125, 125], [1, 1]],
-            'total_sample_conc_in_vial_mg_L': [[560.0000000000001, 560.0000000000001], [112.0, 112.0], [2800.0, 2800.0]],
-            'sample_yield_on_feedstock_basis_fr': [[0.45, 0.46], [0.47, 0.48], [0.49, 0.5]],
+            'filename': [['A_1', 'A_2'], ['Ader_1', 'Ader_2'], ['B_1', 'B_2']],
+            'replicate_number': [['1', '2'], ['1', '2'], ['1', '2']],
+            'derivatized': [[False, False], [False, False], [False, False]],
             'calibration_file': [[False, False], [False, False], [False, False]],
+            'dilution_factor': [[1, 1], [1, 1], [1, 1]],
+            'total_sample_conc_in_vial_mg_L': [[1, 1], [1, 1], [1, 1]],
+            'sample_yield_on_feedstock_basis_fr': [[1, 1], [1, 1], [1, 1]],
             'compound_with_max_area': ['oleic acid', '9-octadecenoic acid, (z)-, tms derivative', '2,5-hexanedione'],
             'max_height': [1143123.0, 548218.5, 116469.5],
             'max_area': [6387230.0, 1840687.0, 456719.5],
-            'max_area_if_undiluted': [159680750.0, 230085875.0, 456719.5],
+            'max_area_if_undiluted': [6387230.0, 1840687.0, 456719.5],
             'total_height': [2003628.0, 1271114.0, 263429.0],
             'total_area': [9669384.0, 3905876.5, 950583.0],
-            'total_area_if_undiluted': [241734600.0, 488234562.5, 950583.0],
+            'total_area_if_undiluted': [9669384.0, 3905876.5, 950583.0],
         }
     )
     return samples_info
@@ -523,7 +482,7 @@ def checked_samples_info_applied_calibration():
     samples_info = pd.DataFrame(
     index=pd.Index(['A', 'Ader', 'B'], name='samplename'),
     data={
-        'file_label': [['A_1', 'A_2'], ['Ader_1', 'Ader_2'], ['B_1', 'B_2']],
+        'filename': [['A_1', 'A_2'], ['Ader_1', 'Ader_2'], ['B_1', 'B_2']],
         'derivatized': [[False, False], [True, True], [False, False]],
         'dilution_factor': [[25, 25], [125, 125], [1, 1]],
         'total_sample_conc_in_vial_mg_L': [[560.0000000000001, 560.0000000000001], [112.0, 112.0], [2800.0, 2800.0]],

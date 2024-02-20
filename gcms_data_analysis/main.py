@@ -1329,7 +1329,7 @@ class Project:
         cls.column_to_sort_values_in_samples = new_column_to_sort_values_in_samples
 
 
-    def __init__(self, rebuild_compounds_properties=False):
+    def __init__(self):
         """
         """
         self.files_info = None
@@ -1347,8 +1347,9 @@ class Project:
         self.list_of_all_deriv_compounds_created = False
         self.compounds_properties = None
         self.deriv_compounds_properties = None
-        self.compounds_properties_loaded = False
-        self.deriv_compounds_properties_loaded = False
+        self.compounds_properties_created = False
+        self.deriv_compounds_properties_created = False
+        self.files_info = None
         self.files = {}
         self.is_files_deriv = {}
         self.files_loaded = False
@@ -1376,22 +1377,7 @@ class Project:
         self.samples_aggrreps = {}
         self.samples_aggrreps_std = {}
 
-        self.load_files_info()
-
-        if any(self.files_info['derivatized']):
-            self.deriv_files_present = True
-            print('Info: derivatized samples are present')
-
-        # self.load_calibrations()
-
-        # if rebuild_compounds_properties:
-        #     self.create_compounds_properties()
-        #     if self.deriv_files_present:
-        #         self.create_deriv_compounds_properties()
-        # else:
-        #     self.load_compounds_properties()
-        #     if self.deriv_files_present:
-        #         self.load_deriv_compounds_properties()
+        # self.load_files_info()
 
     def load_files_info(self):
         """Attempts to load the 'files_info.xlsx' file containing metadata about GCMS
@@ -1404,28 +1390,39 @@ class Project:
                 engine='openpyxl', index_col='filename')
             files_info = self._add_default_to_files_info(files_info_no_defaults)
             print('Info: files_info loaded')
+            if Project.auto_save_to_excel:
+                files_info.to_excel(plib.Path(Project.out_path, 'files_info.xlsx'))
+            self.files_info = files_info
+            self.files_info_created = True
+            if any(files_info['derivatized']):
+                self.deriv_files_present = True
+                print('Info: derivatized samples are present')
         except FileNotFoundError:
             print('Info: files_info not found')
             files_info = self.create_files_info()
-        files_info.to_excel(plib.Path(Project.in_path, 'files_info.xlsx'))
-        self.files_info = files_info
-        self.files_info_created = True
-        return self.files_info
+        return files_info
 
     def create_files_info(self):
         """Creates a default 'files_info' DataFrame from GCMS files found in the project's
         input path if an existing 'files_info' file is not found. It autogenerates filenames,
         samples, and replicates based on the GCMS file names, saves the DataFrame to
         'files_info.xlsx', and sets it as the current 'files_info' attribute."""
-        print('Info: autocreating files_info')
         filename = [a.parts[-1].split('.')[0]
             for a in list(Project.in_path.glob('**/*.txt'))]
         samplename = [f.split('_')[0] for f in filename]
         replicate_number = [f.split('_')[1] for f in filename]
         files_info_no_defaults = pd.DataFrame({'filename':filename,
             'samplename':samplename, 'replicate_number':replicate_number})
+        files_info_no_defaults.set_index('filename', drop=True, inplace=True)
         files_info = self._add_default_to_files_info(files_info_no_defaults)
-        files_info.set_index('filename', drop=True, inplace=True)
+        print('Info: files_info created')
+        if Project.auto_save_to_excel:
+            files_info.to_excel(plib.Path(Project.out_path, 'files_info.xlsx'))
+        self.files_info = files_info
+        self.files_info_created = True
+        if any(files_info['derivatized']):
+            self.deriv_files_present = True
+            print('Info: derivatized samples are present')
         return files_info
 
     def _add_default_to_files_info(self, files_info_no_defaults):
@@ -1452,6 +1449,8 @@ class Project:
         'files' attribute with data frames of file contents and 'is_files_deriv' with
         derivative information. Marks 'files_loaded' as True after loading."""
         print('Info: load_all_files: loop started')
+        if not self.files_info_created:
+            self.load_files_info()
         for filename, is_deriv in zip(self.files_info.index,
                                         self.files_info['derivatized']):
             file = self.load_single_file(filename)
@@ -1517,6 +1516,8 @@ class Project:
         columns. It ensures each calibration file is loaded once, updates the 'calibrations'
         attribute with calibration data, and sets 'calibrations_loaded' and
         'calibrations_not_present' flags based on the presence of calibration files."""
+        if not self.files_info_created:
+            self.load_files_info()
         if any(self.files_info['calibration_file']):
             _files_info = self.files_info.drop_duplicates(subset='calibration_file')
             for cal_name, is_cal_deriv in zip(_files_info['calibration_file'],
@@ -1590,10 +1591,11 @@ class Project:
                 _dfs_deriv.append(file)
         add_to_idx = ', ' + Project.string_in_deriv_names[0]
         for filename, file in self.calibrations.items():
+            temporary = file.copy()
             if self.is_calibrations_deriv[filename]:
                 # need to add to calib index to match file names
-                file.index = file.index.map(lambda x: x + add_to_idx)
-                _dfs_deriv.append(file)
+                temporary.index = temporary.index.map(lambda x: x + add_to_idx)
+                _dfs_deriv.append(temporary)
         all_deriv_compounds = pd.concat(_dfs_deriv)
         set_of_all_deriv_compounds = pd.Index(all_deriv_compounds.index.unique())
         self.list_of_all_deriv_compounds = list(set_of_all_deriv_compounds.drop('unidentified'))
@@ -1604,35 +1606,36 @@ class Project:
     def load_compounds_properties(self):
         """Attempts to load the 'compounds_properties.xlsx' file containing physical
         and chemical properties of compounds. If not found, it creates a new properties
-        DataFrame and updates the 'compounds_properties_loaded' attribute."""
+        DataFrame and updates the 'compounds_properties_created' attribute."""
         try:
             cpdf = pd.read_excel(plib.Path(Project.in_path,
                 'compounds_properties.xlsx'), index_col='comp_name')
+            cpdf = self._order_columns_in_compounds_properties(cpdf)
+            cpdf = cpdf.fillna(0)
+            self.compounds_properties = cpdf
+            self.compounds_properties_created = True
             print('Info: compounds_properties loaded')
         except FileNotFoundError:
             print('Warning: compounds_properties.xlsx not found, creating it')
             cpdf = self.create_compounds_properties()
-        cpdf = self._order_columns_in_compounds_properties(cpdf)
-        cpdf = cpdf.fillna(0)
-        self.compounds_properties = cpdf
-        self.compounds_properties_loaded = True
+
         return self.compounds_properties
 
     def load_deriv_compounds_properties(self):
         """Attempts to load the 'deriv_compounds_properties.xlsx' file containing properties
         for derivatized compounds. If not found, it creates a new properties DataFrame
-        for derivatized compounds and updates the 'deriv_compounds_properties_loaded' attribute."""
+        for derivatized compounds and updates the 'deriv_compounds_properties_created' attribute."""
         try:
             dcpdf = pd.read_excel(plib.Path(Project.in_path,
                 'deriv_compounds_properties.xlsx'), index_col='comp_name')
+            dcpdf = self._order_columns_in_compounds_properties(dcpdf)
+            dcpdf = dcpdf.fillna(0)
+            self.deriv_compounds_properties = dcpdf
+            self.deriv_compounds_properties_created = True
             print('Info: deriv_compounds_properties loaded')
         except FileNotFoundError:
             print('Warning: deriv_compounds_properties.xlsx not found, creating it')
             dcpdf = self.create_deriv_compounds_properties()
-        dcpdf = self._order_columns_in_compounds_properties(dcpdf)
-        dcpdf = dcpdf.fillna(0)
-        self.deriv_compounds_properties = dcpdf
-        self.deriv_compounds_properties_loaded = True
         return self.deriv_compounds_properties
 
     def create_compounds_properties(self):
@@ -1652,10 +1655,11 @@ class Project:
             cpdf = name_to_properties(name, cpdf, self.class_code_frac)
         cpdf = self._order_columns_in_compounds_properties(cpdf)
         cpdf = cpdf.fillna(0)
+        self.compounds_properties = cpdf
+        self.compounds_properties_created = True
         # save db in the project folder in the input
         cpdf.to_excel(plib.Path(Project.in_path, 'compounds_properties.xlsx'))
-        self.compounds_properties = cpdf
-        print('Info: create_compounds_properties: compounds_properties created')
+        print('Info: create_compounds_properties: compounds_properties created and saved')
         return self.compounds_properties
 
     def create_deriv_compounds_properties(self):
@@ -1685,9 +1689,11 @@ class Project:
         dcpdf = self._order_columns_in_compounds_properties(dcpdf)
         dcpdf = dcpdf.fillna(0)
         # save db in the project folder in the input
-        dcpdf.to_excel(plib.Path(Project.in_path, 'deriv_compounds_properties.xlsx'))
         self.deriv_compounds_properties = dcpdf
-        print('Info: create_deriv_compounds_properties: deriv_compounds_properties created')
+        dcpdf.to_excel(plib.Path(Project.in_path, 'deriv_compounds_properties.xlsx'))
+        self.compounds_properties_created = True
+        print('Info: create_deriv_compounds_properties:' +
+              'deriv_compounds_properties created and saved')
         return self.deriv_compounds_properties
 
     def _order_columns_in_compounds_properties(self, comp_df):
@@ -1716,10 +1722,10 @@ class Project:
         and updates the corresponding calibration dataframes."""
         if not self.calibrations_loaded:
             self.load_calibrations()
-        if not self.compounds_properties_loaded:
+        if not self.compounds_properties_created:
             self.load_compounds_properties()
         if self.deriv_files_present:
-            if not self.deriv_compounds_properties_loaded:
+            if not self.deriv_compounds_properties_created:
                 self.load_deriv_compounds_properties()
         for calibname, calib in self.calibrations.items():
             if not self.is_calibrations_deriv[calibname]:
@@ -1742,10 +1748,10 @@ class Project:
         and updates the corresponding file dataframes."""
         if not self.files_loaded:
             self.load_all_files()
-        if not self.compounds_properties_loaded:
+        if not self.compounds_properties_created:
             self.load_compounds_properties()
         if self.deriv_files_present:
-            if not self.deriv_compounds_properties_loaded:
+            if not self.deriv_compounds_properties_created:
                 self.load_deriv_compounds_properties()
         for filename, file in self.files.items():
             if not self.is_files_deriv[filename]:
@@ -1962,9 +1968,9 @@ class Project:
         all_numeric_columns = numeric_columns + max_columns + total_columns
         # Ensure these columns are in files_info before proceeding
         numcol = [col for col in all_numeric_columns if col in self.files_info.columns]
-
+        files_info = self.files_info.reset_index()
         # Identify non-numeric columns
-        non_numcol = [col for col in self.files_info.columns if col not in numcol
+        non_numcol = [col for col in files_info.columns if col not in numcol
                       and col != 'samplename']
         # Initialize samples_info DataFrame
         # self.samples_info = pd.DataFrame(columns=self.files_info.columns)
@@ -1973,7 +1979,7 @@ class Project:
         agg_dict = {**{nc: 'mean' for nc in numcol},
             **{nnc: lambda x: list(x) for nnc in non_numcol}}
         # Group by 'samplename' and apply aggregation, make sure 'samplename' is not part of the aggregation
-        _samples_info = self.files_info.groupby('samplename').agg(agg_dict)
+        _samples_info = files_info.groupby('samplename').agg(agg_dict)
         self.samples_info = _samples_info.loc[:, non_numcol + numcol]
         self.samples_info_created = True
         print('Info: create_samples_info: samples_info created')
