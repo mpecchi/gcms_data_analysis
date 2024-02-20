@@ -487,7 +487,7 @@ def name_to_properties(comp_name, df, df_class_code_frac):
     unique_classes = [c if '_' not in c else c.split('_')[0] for c in classes]
     for unique_cl in unique_classes: # sum classes that must be merged
         sum_cls = [k for k in classes if unique_cl in k]  # classes to be summed
-        occurr = 0.  # counts, or occurrencies
+        occurr = 0  # counts, or occurrencies
         cl_mf = 0.  # class mass fracations
         for cl in sum_cls: # for each class that must be summed
             occurr += newdf.loc[comp_name, cl].astype(int)  # sum counts
@@ -500,16 +500,36 @@ def name_to_properties(comp_name, df, df_class_code_frac):
     # heteroatoms and Si are considered functional groups as they usually
     # enter the discussion in a similar way. The atom count is used here
     hetero_atoms = [e for e in elements if e not in ['H', 'C', 'O', 'N', 'Si']]
-    hetero_atoms_symb = ['el_' + e for e in hetero_atoms]
-    hetero_atoms_mf = ['el_mf_' + e for e in hetero_atoms]
+
     if hetero_atoms is not None:
-        df.loc[comp_name, 'fg_hetero_atoms'] = \
-            df.loc[comp_name, hetero_atoms_symb].sum()
-        df.loc[comp_name, 'fg_mf_hetero_atoms'] = \
-            df.loc[comp_name, hetero_atoms_mf].sum()
-    if 'Si' in df:
-        df.loc[comp_name, 'fg_Si'] = df.loc[comp_name, 'el_Si'].sum()
-        df.loc[comp_name, 'fg_mf_Si'] = df.loc[comp_name, 'el_mf_Si'].sum()
+        for ha in hetero_atoms:
+            ha_col = 'el_' + ha
+            ha_mf_col = 'el_mf_' + ha
+            fg_col = 'fg_' + ha
+            fg_mf_col = 'fg_mf_' + ha
+
+            # Initialize columns if they don't exist
+            if fg_col not in df.columns:
+                df[fg_col] = 0
+            if fg_mf_col not in df.columns:
+                df[fg_mf_col] = 0.0
+
+            # Aggregate counts and mass fractions for hetero atoms
+            if ha in elements:  # Ensure the element is present before processing
+                df.loc[comp_name, fg_col] = df.loc[comp_name, ha_col].astype(int)
+                df.loc[comp_name, fg_mf_col] = df.loc[comp_name, ha_mf_col]
+        # Handle hetero atoms sum separately if needed
+        if hetero_atoms:
+            df.loc[comp_name, 'fg_hetero_atoms'] = df.loc[comp_name, ['fg_' + e for e in hetero_atoms]].sum(axis=1).astype(int)
+            df.loc[comp_name, 'fg_mf_hetero_atoms'] = df.loc[comp_name, ['fg_mf_' + e for e in hetero_atoms]].sum(axis=1)
+
+        # Ensure Si is handled correctly if present
+    if 'Si' in elements:
+        df.loc[comp_name, 'fg_Si'] = df.loc[comp_name, 'el_Si'].astype(int)
+        df.loc[comp_name, 'fg_mf_Si'] = df.loc[comp_name, 'el_mf_Si']
+
+    fg_mf_cols = [c for c in list(df) if 'fg_mf' in c and c != 'fg_mf_total']
+    df['fg_mf_total'] = df.loc[comp_name, fg_mf_cols].sum()
     print('\tInfo: name_to_properties ', comp_name)
     return df
 
@@ -1210,6 +1230,7 @@ class Project:
     semi_calibration = True
     tanimoto_similarity_threshold = 0.4
     delta_mol_weigth_threshold = 100
+    column_to_sort_values_in_samples = 'retention_time'
 
     @classmethod
     def set_folder_path(cls, path):
@@ -1301,6 +1322,12 @@ class Project:
         Area [-]', 'conc_vial_mg_L' to 'conc. [mg/L] (ppm)', etc."""
         cls.param_to_axis_label = new_param_to_axis_label
 
+    @classmethod
+    def set_column_to_sort_values_in_samples(cls, new_column_to_sort_values_in_samples):
+        """Update the column that is used to sort the entries (compounds) in each sample.
+        Default is retention_time, alternative is area"""
+        cls.column_to_sort_values_in_samples = new_column_to_sort_values_in_samples
+
 
     def __init__(self, rebuild_compounds_properties=False):
         """
@@ -1355,16 +1382,16 @@ class Project:
             self.deriv_files_present = True
             print('Info: derivatized samples are present')
 
-        self.load_calibrations()
+        # self.load_calibrations()
 
-        if rebuild_compounds_properties:
-            self.create_compounds_properties()
-            if self.deriv_files_present:
-                self.create_deriv_compounds_properties()
-        else:
-            self.load_compounds_properties()
-            if self.deriv_files_present:
-                self.load_deriv_compounds_properties()
+        # if rebuild_compounds_properties:
+        #     self.create_compounds_properties()
+        #     if self.deriv_files_present:
+        #         self.create_deriv_compounds_properties()
+        # else:
+        #     self.load_compounds_properties()
+        #     if self.deriv_files_present:
+        #         self.load_deriv_compounds_properties()
 
     def load_files_info(self):
         """Attempts to load the 'files_info.xlsx' file containing metadata about GCMS
@@ -1373,16 +1400,15 @@ class Project:
         saves it to 'files_info.xlsx'. This method ensures 'files_info' is loaded with
         necessary defaults and updates the class attribute 'files_info_created' to True."""
         try:
-            self.files_info = pd.read_excel(plib.Path(Project.in_path, 'files_info.xlsx'),
+            files_info_no_defaults = pd.read_excel(plib.Path(Project.in_path, 'files_info.xlsx'),
                 engine='openpyxl', index_col='filename')
-            self._add_default_to_files_info()
+            files_info = self._add_default_to_files_info(files_info_no_defaults)
             print('Info: files_info loaded')
         except FileNotFoundError:
             print('Info: files_info not found')
-            self.files_info = pd.DataFrame()
-            self.create_files_info()
-            self._add_default_to_files_info()
-        self.files_info.to_excel(plib.Path(Project.in_path, 'files_info.xlsx'))
+            files_info = self.create_files_info()
+        files_info.to_excel(plib.Path(Project.in_path, 'files_info.xlsx'))
+        self.files_info = files_info
         self.files_info_created = True
         return self.files_info
 
@@ -1396,27 +1422,94 @@ class Project:
             for a in list(Project.in_path.glob('**/*.txt'))]
         samplename = [f.split('_')[0] for f in filename]
         replicate_number = [f.split('_')[1] for f in filename]
-        self.files_info = pd.DataFrame({'filename':filename,
+        files_info_no_defaults = pd.DataFrame({'filename':filename,
             'samplename':samplename, 'replicate_number':replicate_number})
-        self.files_info.set_index('filename', drop=True, inplace=True)
-        self.files_info.to_excel(plib.Path(Project.in_path, 'files_info.xlsx'))
+        files_info = self._add_default_to_files_info(files_info_no_defaults)
+        files_info.set_index('filename', drop=True, inplace=True)
+        return files_info
 
-    def _add_default_to_files_info(self):
+    def _add_default_to_files_info(self, files_info_no_defaults):
         """Adds default values to the 'files_info' DataFrame for missing essential columns.
         This method ensures that every necessary column exists in 'files_info', filling
         missing ones with default values or false flags, applicable for both user-provided
         and automatically created 'files_info' DataFrames."""
-        if 'samplename' not in list(self.files_info):
-            self.files_info['samplename'] = \
-                [f.split('_')[0] for f in self.files_info.index.tolist()]
-        if 'derivatized' not in list(self.files_info):
-            self.files_info['derivatized'] = False
-        if 'calibration_file' not in list(self.files_info):
-            self.files_info['calibration_file'] = False
+        if 'samplename' not in list(files_info_no_defaults):
+            files_info_no_defaults['samplename'] = \
+                [f.split('_')[0] for f in files_info_no_defaults.index.tolist()]
+        if 'derivatized' not in list(files_info_no_defaults):
+            files_info_no_defaults['derivatized'] = False
+        if 'calibration_file' not in list(files_info_no_defaults):
+            files_info_no_defaults['calibration_file'] = False
 
         for col in Project.files_info_defauls_columns:
-            if col not in list(self.files_info):
-                self.files_info[col] = 1
+            if col not in list(files_info_no_defaults):
+                files_info_no_defaults[col] = 1
+        return files_info_no_defaults
+
+    def load_all_files(self):
+        """Loads all files listed in 'files_info' into a dictionary, where keys are
+        filenames. Each file is processed to clean and standardize data. It updates the
+        'files' attribute with data frames of file contents and 'is_files_deriv' with
+        derivative information. Marks 'files_loaded' as True after loading."""
+        print('Info: load_all_files: loop started')
+        for filename, is_deriv in zip(self.files_info.index,
+                                        self.files_info['derivatized']):
+            file = self.load_single_file(filename)
+            self.files[filename] = file
+            self.is_files_deriv[filename] = is_deriv
+        self.files_loaded = True
+        print('Info: load_all_files: files loaded')
+        return self.files, self.is_files_deriv
+
+    def load_single_file(self, filename):
+        """Loads a single GCMS file by its name, cleans, and processes the data according
+        to project settings (e.g., delimiter, columns to keep). It sums areas for duplicated
+        compound names and handles dilution factors. Updates the file's data with iupac names
+        and reorders columns. Logs the process and returns the cleaned DataFrame."""
+        file = pd.read_csv(plib.Path(Project.in_path, filename + '.txt'),
+            delimiter=Project.load_delimiter, index_col=0, skiprows=Project.load_skiprows)
+        columns_to_drop = [cl for cl in file.columns if cl not in Project.columns_to_keep_in_files]
+        file.drop(columns_to_drop, axis=1, inplace=True)
+        file.rename(Project.columns_to_rename_in_files, inplace=True, axis='columns')
+
+        file['comp_name'] = file['comp_name'].fillna('unidentified')
+        sum_areas_in_file = file.groupby('comp_name')['area'].sum()
+        # the first ret time is kept for each duplicated Name
+        file.drop_duplicates(subset='comp_name', keep='first', inplace=True)
+        file.set_index('comp_name', inplace=True)  # set the cas as the index
+        file['area'] = sum_areas_in_file  # used summed areas as areas
+
+        file['area_if_undiluted'] = file['area'] * \
+            self.files_info.loc[filename, 'dilution_factor']
+        file['iupac_name'] = 'n.a.'
+        new_cols_order = ['iupac_name'] + \
+            [col for col in file.columns if col != 'iupac_name']
+        file = file[new_cols_order]
+        file.index.name = filename
+        file.index = file.index.map(lambda x: x.lower())
+        file.rename(Project.compounds_to_rename, inplace=True)
+        print('\tInfo: load_single_file ', filename)
+        return file
+
+    def load_class_code_frac(self):
+        """Loads the 'classifications_codes_fractions.xlsx' file containing information
+        on SMARTS classifications. It first searches in the project's input path, then
+        in the shared path. It logs the status and returns the DataFrame containing
+        classification codes and fractions."""
+        try:  # first try to find the file in the folder
+            self.class_code_frac = pd.read_excel(plib.Path(Project.in_path,
+                'classifications_codes_fractions.xlsx'))
+            print('Info: load_class_code_frac: classifications_codes_fractions loaded')
+        except FileNotFoundError:  # then try in the common input folder
+            try:
+                self.class_code_frac = pd.read_excel(plib.Path(Project.shared_path,
+                    'classifications_codes_fractions.xlsx'))
+                print('Info: load_class_code_frac: classifications_codes_fractions loaded from' +
+                      'shared folder (up one level)')
+            except FileNotFoundError:
+                print('ERROR: the file "classifications_codes_fractions.xlsx" was not found ',
+                      'look in example/data for a template')
+        return self.class_code_frac
 
     def load_calibrations(self):
         """Loads calibration data from Excel files specified in the 'files_info' DataFrame,
@@ -1459,71 +1552,6 @@ class Project:
 
         return self.calibrations, self.is_calibrations_deriv
 
-    def load_class_code_frac(self):
-        """Loads the 'classifications_codes_fractions.xlsx' file containing information
-        on SMARTS classifications. It first searches in the project's input path, then
-        in the shared path. It logs the status and returns the DataFrame containing
-        classification codes and fractions."""
-        try:  # first try to find the file in the folder
-            self.class_code_frac = pd.read_excel(plib.Path(Project.in_path,
-                'classifications_codes_fractions.xlsx'))
-            print('Info: load_class_code_frac: classifications_codes_fractions loaded')
-        except FileNotFoundError:  # then try in the common input folder
-            try:
-                self.class_code_frac = pd.read_excel(plib.Path(Project.shared_path,
-                    'classifications_codes_fractions.xlsx'))
-                print('Info: load_class_code_frac: classifications_codes_fractions loaded from' +
-                      'shared folder (up one level)')
-            except FileNotFoundError:
-                print('ERROR: the file "classifications_codes_fractions.xlsx" was not found ',
-                      'look in example/data for a template')
-        return self.class_code_frac
-
-    def load_all_files(self):
-        """Loads all files listed in 'files_info' into a dictionary, where keys are
-        filenames. Each file is processed to clean and standardize data. It updates the
-        'files' attribute with data frames of file contents and 'is_files_deriv' with
-        derivative information. Marks 'files_loaded' as True after loading."""
-        print('Info: load_all_files: loop started')
-        for filename, is_deriv in zip(self.files_info.index,
-                                    self.files_info['derivatized']):
-            file = self.load_single_file(filename)
-            self.files[filename] = file
-            self.is_files_deriv[filename] = is_deriv
-        self.files_loaded = True
-        print('Info: load_all_files: files loaded')
-        return self.files, self.is_files_deriv
-
-    def load_single_file(self, filename):
-        """Loads a single GCMS file by its name, cleans, and processes the data according
-        to project settings (e.g., delimiter, columns to keep). It sums areas for duplicated
-        compound names and handles dilution factors. Updates the file's data with iupac names
-        and reorders columns. Logs the process and returns the cleaned DataFrame."""
-        file = pd.read_csv(plib.Path(Project.in_path, filename + '.txt'),
-            delimiter=Project.load_delimiter, index_col=0, skiprows=Project.load_skiprows)
-        columns_to_drop = [cl for cl in file.columns if cl not in Project.columns_to_keep_in_files]
-        file.drop(columns_to_drop, axis=1, inplace=True)
-        file.rename(Project.columns_to_rename_in_files, inplace=True, axis='columns')
-
-        file['comp_name'] = file['comp_name'].fillna('unidentified')
-        sum_areas_in_file = file.groupby('comp_name')['area'].sum()
-        # the first ret time is kept for each duplicated Name
-        file.drop_duplicates(subset='comp_name', keep='first', inplace=True)
-        file.set_index('comp_name', inplace=True)  # set the cas as the index
-        file['area'] = sum_areas_in_file  # used summed areas as areas
-
-        file['area_if_undiluted'] = file['area'] * \
-            self.files_info.loc[filename, 'dilution_factor']
-        file['iupac_name'] = 'n.a.'
-        new_cols_order = ['iupac_name'] + \
-            [col for col in file.columns if col != 'iupac_name']
-        file = file[new_cols_order]
-        file.index.name = filename
-        file.index = file.index.map(lambda x: x.lower())
-        file.rename(Project.compounds_to_rename, inplace=True)
-        print('\tInfo: load_single_file ', filename)
-        return file
-
     def create_list_of_all_compounds(self):
         """Compiles a list of all unique compounds across all loaded files and calibrations,
         only for underivatized compounds. It ensures all files
@@ -1531,6 +1559,8 @@ class Project:
         the 'list_of_all_compounds' attribute. Logs completion and returns the list."""
         if not self.files_loaded:
             self.load_all_files()
+        if not self.calibrations_loaded:
+            self.load_calibrations()
         _dfs = []
         for filename, file in self.files.items():
             if not self.is_files_deriv[filename]:
@@ -1541,7 +1571,7 @@ class Project:
         # non-derivatized compounds
         all_compounds = pd.concat(_dfs)
         set_of_all_compounds = pd.Index(all_compounds.index.unique())
-        self.list_of_all_compounds = set_of_all_compounds.drop('unidentified')
+        self.list_of_all_compounds = list(set_of_all_compounds.drop('unidentified'))
         self.list_of_all_compounds_created = True
         print('Info: create_list_of_all_compounds: list_of_all_compounds created')
         return self.list_of_all_compounds
@@ -1552,6 +1582,8 @@ class Project:
         Updates and returns the 'list_of_all_deriv_compounds' attribute."""
         if not self.files_loaded:
             self.load_all_files()
+        if not self.calibrations_loaded:
+            self.load_calibrations()
         _dfs_deriv = []
         for filename, file in self.files.items():
             if self.is_files_deriv[filename]:
@@ -1563,8 +1595,8 @@ class Project:
                 file.index = file.index.map(lambda x: x + add_to_idx)
                 _dfs_deriv.append(file)
         all_deriv_compounds = pd.concat(_dfs_deriv)
-        self.list_of_all_deriv_compounds = pd.Index(
-            all_deriv_compounds.index.unique()).drop('unidentified')
+        set_of_all_deriv_compounds = pd.Index(all_deriv_compounds.index.unique())
+        self.list_of_all_deriv_compounds = list(set_of_all_deriv_compounds.drop('unidentified'))
         self.list_of_all_deriv_compounds_created = True
         print('Info: create_list_of_all_deriv_compounds: list_of_all_deriv_compounds created')
         return self.list_of_all_deriv_compounds
@@ -1574,12 +1606,15 @@ class Project:
         and chemical properties of compounds. If not found, it creates a new properties
         DataFrame and updates the 'compounds_properties_loaded' attribute."""
         try:
-            self.compounds_properties = pd.read_excel(plib.Path(Project.in_path,
+            cpdf = pd.read_excel(plib.Path(Project.in_path,
                 'compounds_properties.xlsx'), index_col='comp_name')
             print('Info: compounds_properties loaded')
         except FileNotFoundError:
             print('Warning: compounds_properties.xlsx not found, creating it')
-            self.create_compounds_properties()
+            cpdf = self.create_compounds_properties()
+        cpdf = self._order_columns_in_compounds_properties(cpdf)
+        cpdf = cpdf.fillna(0)
+        self.compounds_properties = cpdf
         self.compounds_properties_loaded = True
         return self.compounds_properties
 
@@ -1588,12 +1623,15 @@ class Project:
         for derivatized compounds. If not found, it creates a new properties DataFrame
         for derivatized compounds and updates the 'deriv_compounds_properties_loaded' attribute."""
         try:
-            self.deriv_compounds_properties = pd.read_excel(plib.Path(Project.in_path,
+            dcpdf = pd.read_excel(plib.Path(Project.in_path,
                 'deriv_compounds_properties.xlsx'), index_col='comp_name')
             print('Info: deriv_compounds_properties loaded')
         except FileNotFoundError:
             print('Warning: deriv_compounds_properties.xlsx not found, creating it')
-            self.create_deriv_compounds_properties()
+            dcpdf = self.create_deriv_compounds_properties()
+        dcpdf = self._order_columns_in_compounds_properties(dcpdf)
+        dcpdf = dcpdf.fillna(0)
+        self.deriv_compounds_properties = dcpdf
         self.deriv_compounds_properties_loaded = True
         return self.deriv_compounds_properties
 
@@ -1607,20 +1645,12 @@ class Project:
             self.load_class_code_frac()
         if not self.list_of_all_compounds_created:
             self.create_list_of_all_compounds()
-        cpdf = pd.DataFrame(index=self.list_of_all_compounds)
+        cpdf = pd.DataFrame(index=pd.Index(self.list_of_all_compounds))
         cpdf.index.name = 'comp_name'
         print('Info: create_compounds_properties: looping over names')
         for name in cpdf.index:
-            cpdf = name_to_properties(name,
-                cpdf, self.class_code_frac)
-        # cpdf = cpdf.drop_duplicates(subset='iupac_name')
-        fg_mf_cols = [c for c in list(cpdf) if 'fg_mf' in c]
-        cpdf['fg_total'] = cpdf.loc[:, fg_mf_cols].sum(axis=1)
-        # order columns for better visualization
-        ordered_cols = list(cpdf)[:5] + \
-            list(cpdf)[-1:] + \
-            sorted(list(cpdf)[5:-1])
-        cpdf = cpdf[ordered_cols]
+            cpdf = name_to_properties(name, cpdf, self.class_code_frac)
+        cpdf = self._order_columns_in_compounds_properties(cpdf)
         cpdf = cpdf.fillna(0)
         # save db in the project folder in the input
         cpdf.to_excel(plib.Path(Project.in_path, 'compounds_properties.xlsx'))
@@ -1635,13 +1665,13 @@ class Project:
         to 'deriv_compounds_properties.xlsx'."""
         if not self.class_code_frac_loaded:
             self.load_class_code_frac()
-        if not self.list_of_all_compounds_created:
+        if not self.list_of_all_deriv_compounds_created:
             self.create_list_of_all_deriv_compounds()
 
         unique_deriv_compounds = self.list_of_all_deriv_compounds
         unique_underiv_compounds = [",".join(name.split(',')[:-1])
                                     for name in unique_deriv_compounds]
-        dcpdf = pd.DataFrame(index=unique_underiv_compounds)
+        dcpdf = pd.DataFrame(index=pd.Index(unique_underiv_compounds))
         dcpdf.index.name = 'comp_name'
         dcpdf['deriv_comp_name'] = unique_deriv_compounds
         print('Info: create_deriv_compounds_properties: looping over names')
@@ -1652,13 +1682,7 @@ class Project:
         dcpdf['underiv_comp_name'] = dcpdf.index
         dcpdf.set_index('deriv_comp_name', inplace=True)
         dcpdf.index.name = 'comp_name'
-        # self.compounds_properties.set_index('comp_name', drop=True, inplace=True)
-        # the sum of all the fg_mf is 1 (or close enough)
-        fg_mf_cols = [c for c in list(dcpdf) if 'fg_mf' in c]
-        dcpdf['fg_total'] = dcpdf.loc[:, fg_mf_cols].sum(axis=1)
-        # order columns for better visualization
-        ordered_cols = list(dcpdf)[:5] + list(dcpdf)[-1:] + sorted(list(dcpdf)[5:-1])
-        dcpdf = dcpdf[ordered_cols]
+        dcpdf = self._order_columns_in_compounds_properties(dcpdf)
         dcpdf = dcpdf.fillna(0)
         # save db in the project folder in the input
         dcpdf.to_excel(plib.Path(Project.in_path, 'deriv_compounds_properties.xlsx'))
@@ -1666,11 +1690,58 @@ class Project:
         print('Info: create_deriv_compounds_properties: deriv_compounds_properties created')
         return self.deriv_compounds_properties
 
+    def _order_columns_in_compounds_properties(self, comp_df):
+        ord_cols1, ord_cols2, ord_cols3, ord_cols4, ord_cols5, ord_cols6 = \
+            [], [], [], [], [], []
+        for c in comp_df.columns:
+            if not c.startswith(('el_', 'fg_')):
+                ord_cols1.append(c)
+            elif c.startswith('el_mf'):
+                ord_cols3.append(c)
+            elif c.startswith('el_'):
+                ord_cols2.append(c)
+            elif c.startswith('fg_mf_total'):
+                ord_cols6.append(c)
+            elif c.startswith('fg_mf'):
+                ord_cols5.append(c)
+            elif c.startswith('fg_'):
+                ord_cols4.append(c)
+        comp_df = comp_df[ord_cols1 + sorted(ord_cols2) + sorted(ord_cols3)
+            + sorted(ord_cols4) + sorted(ord_cols5) + sorted(ord_cols6)]
+        return comp_df
+
+    def add_iupac_to_calibrations(self):
+        """Adds the IUPAC name to each compound in the calibration data,
+        istinguishing between underivatized and derivatized calibrations,
+        and updates the corresponding calibration dataframes."""
+        if not self.calibrations_loaded:
+            self.load_calibrations()
+        if not self.compounds_properties_loaded:
+            self.load_compounds_properties()
+        if self.deriv_files_present:
+            if not self.deriv_compounds_properties_loaded:
+                self.load_deriv_compounds_properties()
+        for calibname, calib in self.calibrations.items():
+            if not self.is_calibrations_deriv[calibname]:
+                df_comps = self.compounds_properties
+                for c in calib.index.tolist():
+                    iup = df_comps.loc[c, 'iupac_name']
+                    calib.loc[c, 'iupac_name'] = iup
+            else:
+                df_comps = self.deriv_compounds_properties
+                df_comps.set_index('underiv_comp_name', inplace=True)
+                for c in calib.index.tolist():
+                    iup = df_comps.loc[c, 'iupac_name']
+                    calib.loc[c, 'iupac_name'] = iup
+        self.iupac_to_calibrations_added = True
+        return self.calibrations, self.is_calibrations_deriv
+
     def add_iupac_to_files(self):
         """Adds the IUPAC name to each compound in the loaded files,
         distinguishing between underivatized and derivatized compounds,
         and updates the corresponding file dataframes."""
-
+        if not self.files_loaded:
+            self.load_all_files()
         if not self.compounds_properties_loaded:
             self.load_compounds_properties()
         if self.deriv_files_present:
@@ -1687,32 +1758,8 @@ class Project:
                 else:
                     iup = df_comps.loc[c, 'iupac_name']
                     file.loc[c, 'iupac_name'] = iup
-            # new_cols_order = ['iupac_name'] + [col for col in file.columns
-            #                                    if col != 'iupac_name']
-            # self.files[filename] = file[new_cols_order]
         self.iupac_to_files_added = True
-
-    def add_iupac_to_calibrations(self):
-        """Adds the IUPAC name to each compound in the calibration data,
-        istinguishing between underivatized and derivatized calibrations,
-        and updates the corresponding calibration dataframes."""
-        if not self.compounds_properties_loaded:
-            self.load_compounds_properties()
-        if self.deriv_files_present:
-            if not self.deriv_compounds_properties_loaded:
-                self.load_deriv_compounds_properties()
-        for calibname, calib in self.calibrations.items():
-            if not self.is_calibrations_deriv[calibname]:
-                df_comps = self.compounds_properties
-                for c in calib.index.tolist():
-                    iup = df_comps.loc[c, 'iupac_name']
-                    calib.loc[c, 'iupac_name'] = iup
-            else:
-                df_comps = self.deriv_compounds_properties
-                for c in calib.index.tolist():
-                    iup = df_comps.loc[c, 'iupac_name']
-                    calib.loc[c, 'iupac_name'] = iup
-        self.iupac_to_calibrations_added = True
+        return self.files, self.is_files_deriv
 
     def apply_calibration_to_files(self):
         """Applies the appropriate calibration curve to each compound
@@ -1728,9 +1775,9 @@ class Project:
                   'files are unchanged')
             return self.files, self.is_files_deriv
         if not self.iupac_to_files_added:
-            self.add_iupac_to_files()
+            _, _ = self.add_iupac_to_files()
         if not self.iupac_to_calibrations_added:
-            self.add_iupac_to_calibrations()
+            _, _ = self.add_iupac_to_calibrations()
         for filename, _ in self.files.items():
             calibration_name = self.files_info.loc[filename, 'calibration_file']
             calibration = self.calibrations[calibration_name]
@@ -1866,33 +1913,32 @@ class Project:
         DataFrame, such as maximum height, area, and concentrations,
         updating the 'files_info' with these statistics."""
         print('Info: add_stats_to_files_info: started')
+
         if not self.calibration_to_files_applied:
             self.apply_calibration_to_files()
+        if not self.calibrations_not_present:  # calinrations available
+            numeric_columns = ['height', 'area', 'area_if_undiluted', 'conc_vial_mg_L',
+                'conc_vial_if_undiluted_mg_L', 'fraction_of_sample_fr', 'fraction_of_feedstock_fr']
+        else:
+            numeric_columns = ['height', 'area', 'area_if_undiluted']
+        max_columns = [f'max_{nc}' for nc in numeric_columns]
+        total_columns = [f'total_{nc}' for nc in numeric_columns]
         for name, df in self.files.items():
-            self.files_info.loc[name, 'max_height'] = df['height'].max()
-            self.files_info.loc[name, 'max_area'] = df['area'].max()
-            #
-            self.files_info.loc[name, 'max_conc_vial_mg_L'] = \
-                df['conc_vial_mg_L'].max()
-            self.files_info.loc[name, 'max_conc_vial_if_undiluted_mg_L'] = \
-                df['conc_vial_if_undiluted_mg_L'].max()
-            self.files_info.loc[name, 'max_fraction_of_sample_fr'] = \
-                df['fraction_of_sample_fr'].max()
-            self.files_info.loc[name, 'fraction_of_feedstock_fr'] = \
-                df['fraction_of_feedstock_fr'].max()
-            # total values
-            self.files_info.loc[name, 'total_area'] = df['area'].sum()
-            self.files_info.loc[name, 'total_conc_vial_mg_L'] = \
-                df['conc_vial_mg_L'].sum()
-            self.files_info.loc[name, 'total_conc_vial_if_undiluted_mg_L'] = \
-                df['conc_vial_if_undiluted_mg_L'].sum()
-            self.files_info.loc[name, 'total_fraction_of_sample_fr'] = \
-                df['fraction_of_sample_fr'].sum()
-            self.files_info.loc[name, 'total_fraction_of_feedstock_fr'] = \
-                df['fraction_of_feedstock_fr'].sum()
-            self.files_info.loc[name, 'compound_with_max_conc'] = \
-                df[df['conc_vial_mg_L'] ==
-                   self.files_info.loc[name, 'max_conc_vial_mg_L']].index[0]
+            for ncol, mcol, tcol in zip(numeric_columns, max_columns, total_columns):
+                self.files_info.loc[name, mcol] = df[ncol].max()
+                self.files_info.loc[name, tcol] = df[ncol].sum()
+        for name, df in self.files.items():
+            self.files_info.loc[name, 'compound_with_max_area'] = \
+                    df[df['area'] == df['area'].max()].index[0]
+            if not self.calibrations_not_present:
+                self.files_info.loc[name, 'compound_with_max_conc'] = \
+                        df[df['conc_vial_mg_L'] ==
+                        self.files_info.loc[name, 'max_conc_vial_mg_L']].index[0]
+        # convert max and total columns to float
+        for col in max_columns + total_columns:
+            if col in self.files_info.columns:
+                self.files_info[col] = self.files_info[col].astype(float)
+
         if Project.auto_save_to_excel:
             self.save_files_info()
         self.stats_to_files_info_added = True
@@ -1904,19 +1950,41 @@ class Project:
         attribute with this summarized data."""
         if not self.files_info_created:
             self.load_files_info()
-        _samples_info = self.files_info.reset_index(
-            ).groupby('samplename').agg(list)
-        _samples_info.reset_index(inplace=True)
-        _samples_info.set_index('samplename', drop=True, inplace=True)
-        self.samples_info = _samples_info
+
+        # Define numeric columns based on calibration presence
+        if not self.calibrations_not_present:  # calibrations available
+            numeric_columns = ['height', 'area', 'area_if_undiluted', 'conc_vial_mg_L',
+                'conc_vial_if_undiluted_mg_L', 'fraction_of_sample_fr', 'fraction_of_feedstock_fr']
+        else:
+            numeric_columns = ['height', 'area', 'area_if_undiluted']
+        max_columns = [f'max_{nc}' for nc in numeric_columns]
+        total_columns = [f'total_{nc}' for nc in numeric_columns]
+        all_numeric_columns = numeric_columns + max_columns + total_columns
+        # Ensure these columns are in files_info before proceeding
+        numcol = [col for col in all_numeric_columns if col in self.files_info.columns]
+
+        # Identify non-numeric columns
+        non_numcol = [col for col in self.files_info.columns if col not in numcol
+                      and col != 'samplename']
+        # Initialize samples_info DataFrame
+        # self.samples_info = pd.DataFrame(columns=self.files_info.columns)
+
+         # Create an aggregation dictionary
+        agg_dict = {**{nc: 'mean' for nc in numcol},
+            **{nnc: lambda x: list(x) for nnc in non_numcol}}
+        # Group by 'samplename' and apply aggregation, make sure 'samplename' is not part of the aggregation
+        _samples_info = self.files_info.groupby('samplename').agg(agg_dict)
+        self.samples_info = _samples_info.loc[:, non_numcol + numcol]
         self.samples_info_created = True
         print('Info: create_samples_info: samples_info created')
         return self.samples_info
 
-    def create_samples_from_files(self):
+    def  create_samples_from_files(self):
         """Generates a DataFrame for each sample by averaging and calculating
         the standard deviation of replicates, creating a comprehensive
         dataset for each sample in the project."""
+        if not self.samples_info_created:
+            _ = self.create_samples_info()
         if not self.calibration_to_files_applied:
             self.apply_calibration_to_files()
         for samplename in self.samples_info.index:
@@ -1941,7 +2009,10 @@ class Project:
         filling missing values, calculating averages and standard deviations,
         and merging non-numerical data."""
         all_ordered_columns = files_in_sample[0].columns.tolist()
-        non_num_columns = ['iupac_name', 'compound_used_for_calibration']
+        if not self.calibrations_not_present:
+            non_num_columns = ['iupac_name', 'compound_used_for_calibration']
+        else:
+            non_num_columns = ['iupac_name']
         aligned_dfs = [df.align(files_in_sample[0], join='outer', axis=0)[0]
             for df in files_in_sample]  # Align indices
         # Keep non-numerical data separately and ensure no duplicates
@@ -1949,14 +2020,14 @@ class Project:
                                   for df in files_in_sample]).drop_duplicates()
         filled_dfs = [f.drop(columns=non_num_columns).fillna(0) for f in aligned_dfs]
         # Calculating the average and std for numerical data
-        sample = pd.concat(filled_dfs).groupby(level=0).mean()
-        sample_std = pd.concat(filled_dfs).groupby(level=0).std()
+        sample = pd.concat(filled_dfs).groupby(level=0).mean().astype(float)
+        sample_std = pd.concat(filled_dfs).groupby(level=0).std().astype(float)
         # Merging non-numerical data with the numerical results
         sample = sample.merge(non_num_data, left_index=True,
                               right_index=True, how='left')
         sample_std = sample_std.merge(non_num_data, left_index=True,
                                       right_index=True, how='left')
-        sample = sample.sort_values(by='retention_time')
+        sample = sample.sort_values(by=Project.column_to_sort_values_in_samples)
         # Apply the same order to 'sample_std' using reindex
         sample_std = sample_std.reindex(sample.index)
         sample = sample[all_ordered_columns]
@@ -1974,31 +2045,33 @@ class Project:
         print('Info: add_stats_to_samples_info: started')
         if not self.samples_created:
             self.create_samples_from_files()
+        if not self.samples_info_created:
+            self.create_samples_info()
+        if not self.calibrations_not_present:  # calibrations available
+            numeric_columns = ['height', 'area', 'area_if_undiluted', 'conc_vial_mg_L',
+                'conc_vial_if_undiluted_mg_L', 'fraction_of_sample_fr', 'fraction_of_feedstock_fr']
+        else:
+            numeric_columns = ['height', 'area', 'area_if_undiluted']
+        max_columns = [f'max_{nc}' for nc in numeric_columns]
+        total_columns = [f'total_{nc}' for nc in numeric_columns]
         for name, df in self.samples.items():
-            self.samples_info.loc[name, 'max_height'] = df['height'].max()
-            self.samples_info.loc[name, 'max_area'] = df['area'].max()
-            #
-            self.samples_info.loc[name, 'max_conc_vial_mg_L'] = \
-                df['conc_vial_mg_L'].max()
-            self.samples_info.loc[name, 'max_conc_vial_if_undiluted_mg_L'] = \
-                df['conc_vial_if_undiluted_mg_L'].max()
-            self.samples_info.loc[name, 'max_fraction_of_sample_fr'] = \
-                df['fraction_of_sample_fr'].max()
-            self.samples_info.loc[name, 'max_fraction_of_feedstock_fr'] = \
-                df['fraction_of_feedstock_fr'].max()
-            # total values
-            self.samples_info.loc[name, 'total_area'] = df['area'].sum()
-            self.samples_info.loc[name, 'total_conc_vial_mg_L'] = \
-                df['conc_vial_mg_L'].sum()
-            self.samples_info.loc[name, 'total_conc_vial_if_undiluted_mg_L'] = \
-                df['conc_vial_if_undiluted_mg_L'].sum()
-            self.samples_info.loc[name, 'total_fraction_of_sample_fr'] = \
-                df['fraction_of_sample_fr'].sum()
-            self.samples_info.loc[name, 'total_fraction_of_feedstock_fr'] = \
-                df['fraction_of_feedstock_fr'].sum()
-            self.samples_info.loc[name, 'compound_with_max_conc'] = \
-                df[df['conc_vial_mg_L'] ==
-                   self.samples_info.loc[name, 'max_conc_vial_mg_L']].index[0]
+            for ncol, mcol, tcol in zip(numeric_columns, max_columns, total_columns):
+                self.samples_info.loc[name, mcol] = df[ncol].max()
+                self.samples_info.loc[name, tcol] = df[ncol].sum()
+        for name, df in self.samples.items():
+            self.samples_info.loc[name, 'compound_with_max_area'] = \
+                    df[df['area'] == df['area'].max()].index[0]
+            if not self.calibrations_not_present:
+                self.samples_info.loc[name, 'compound_with_max_conc'] = \
+                        df[df['conc_vial_mg_L'] ==
+                        self.samples_info.loc[name, 'max_conc_vial_mg_L']].index[0]
+        # convert max and total columns to float
+        for col in max_columns + total_columns:
+            if col in self.samples_info.columns:
+                try:
+                    self.samples_info[col] = self.samples_info[col].astype(float)
+                except ValueError:
+                    print(self.samples_info[col])
         self.stats_to_samples_info_added = True
         if Project.auto_save_to_excel:
             self.save_samples_info()
@@ -2014,7 +2087,7 @@ class Project:
 
         if not self.calibration_to_files_applied:
             self.apply_calibration_to_files()
-        rep_columns = self.files_info.index
+        rep_columns = self.files_info.index.tolist()
         _all_comps = self.compounds_properties['iupac_name'].tolist()
         if self.deriv_files_present:
             _all_comps += self.deriv_compounds_properties['iupac_name'].tolist()
@@ -2107,9 +2180,9 @@ class Project:
         if self.deriv_files_present:
             _all_comps += self.deriv_compounds_properties['iupac_name'].tolist()
         rep = pd.DataFrame(index=list(set(_all_comps)),
-            columns=self.samples_info.index, dtype='float')
+            columns=list(self.samples_info.index), dtype='float')
         rep_std = pd.DataFrame(index=list(set(_all_comps)),
-            columns=self.samples_info.index, dtype='float')
+            columns=list(self.samples_info.index), dtype='float')
         rep.index.name, rep_std.index.name = param, param
 
         for comp in rep.index.tolist():  # add conc values
