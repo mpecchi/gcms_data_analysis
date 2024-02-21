@@ -140,87 +140,69 @@ def figure_create(rows=1, cols=1, plot_type=0, paper_col=1,
 
 
 def figure_save(filename, out_path, fig, lst_ax, lst_axt, fig_par,
-    x_lab=None, y_lab=None, yt_lab=None,
-            x_lim=None, y_lim=None, yt_lim=None,
-            x_ticks=None, y_ticks=None, yt_ticks=None,
-            x_tick_labels=None, y_tick_labels=None, yt_tick_labels=None,
-            legend=None, ncol_leg=1,
-            annotate_lttrs=False, annotate_lttrs_loc='down',
-            pdf=False, svg=False, eps=False, transparency=False,
-            subfolder=None, tight_layout=False, grid=False, title=False,
-            set_size_inches=None):
+                x_lab=None, y_lab=None, yt_lab=None,
+                x_lim=None, y_lim=None, yt_lim=None,
+                x_ticks=None, y_ticks=None, yt_ticks=None,
+                x_tick_labels=None, y_tick_labels=None, yt_tick_labels=None,
+                legend=None, ncol_leg=1,
+                annotate_lttrs=False, annotate_lttrs_loc='down',
+                pdf=False, svg=False, eps=False, transparency=False,
+                subfolder=None, tight_layout=False, grid=False, title=False,
+                set_size_inches=None):
     '''
-    This function takes the obects created in figure_create and allows to modify
-    their appeareance and saving the results.
+    This function takes the objects created in figure_create and allows modifying
+    their appearance and saving the results.
 
     Parameters
     ----------
     filename : str
-        name of figure. It is the name of the png od pfd file to be saved
-    out_path : pathlib.Path object. path to the output folder.
-    fig : figure object. created in figure_save.
-    lst_ax : list of axis. Created in figure_create
-    lst_axt : list of twin (secondary) axis. Created in figure_create
-    fig_par : list of figure parameters for space settings
-        left, bottom, right, top, widthspace, heightspace, px, py.
-        Created in figure_create
-    tight_layout : bool
-        If True, ignore fig_par[0:6] and fit the figure to the tightest layout
-        possible. Avoids to lose part of figure, but loses control of margins
-    x_lab : str.list, optional
-        label of the x axis. The default is None.
-        can be given as
-        0. x_lab=None: no axis gets an xlabel
-        1. x_lab='label': only one str, all axis get the same xlabel
-        2. x_lab=['label1', None, Label2, ...]: the list must have the size of
-            lst_ax and contain labels and or None values. Each axis is
-            assigned its label, where None is given, no label is set.
+        Name of the figure. It is the name of the PNG or PDF file to be saved.
+    out_path : pathlib.Path object
+        Path to the output folder.
+    fig : figure object
+        Created in figure_save.
+    lst_ax : list of axis
+        Created in figure_create.
+    lst_axt : list of twin (secondary) axis
+        Created in figure_create.
+    fig_par : list
+        Figure parameters for space settings: left, bottom, right, top, widthspace, heightspace, px, py. Created in figure_create.
+    tight_layout : bool, optional
+        If True, ignores fig_par[0:6] and fits the figure to the tightest layout possible. Avoids losing part of the figure but loses control of margins. The default is False.
+    x_lab : str or list, optional
+        Label of the x-axis. The default is None. Can be given as:
+        - None: No axis gets an xlabel.
+        - 'label': A single string; all axes get the same xlabel.
+        - ['label1', None, 'Label2', ...]: A list matching the size of lst_ax containing labels and/or None values. Each axis is assigned its label; where None is given, no label is set.
     y_lab : str, optional
-        label of the y axis. The default is None. Same options as x_lab
+        Label of the y-axis. The default is None. Same options as x_lab.
     yt_lab : str, optional
-        label of the secondary y-axis. The default is None.
-        Same options as x_lab
-    x_lim : list of two values, list of lists, optional
-        limits of x axis. The default is None.
-        can be given as
-        0. x_lim=None: no axis gets a xlim
-        1. x_lab=[a,b]: all axis get the same xlim
-        2. x_lab=[[a,b], None, [c,d], ...]: the list must have the size of
-            lst_ax and contain [a,b] and or None values. Each axis is
-            assigned its limit, where None is given, no llimit is set.
-    y_lim : list of two values, optional
-        limits of y axis. The default is None. Same options as x_lim
-    yt_lim : list of two values, optional
-        limits of secondary y axis. The default is None.
-        Same options as x_lim
-    x_ticks : list of int or float, optional
-        list of tiks value to be shown on the axis. The default is None.
-    y_ticks : list of int or float, optional
-        list of tiks value to be shown on the axis. The default is None.
-    yt_ticks : TYPE, optional
-        list of tiks value to be shown on the axis. The default is None.
+        Label of the secondary y-axis. The default is None. Same options as x_lab.
+    x_lim : list, optional
+        Limits of the x-axis. The default is None. Can be given as:
+        - None: No axis gets an xlim.
+        - [a,b]: All axes get the same xlim.
+        - [[a,b], None, [c,d], ...]: A list matching the size of lst_ax containing [a,b] ranges and/or None values. Each axis is assigned its limit; where None is given, no limit is set.
+    y_lim : list, optional
+        Limits of the y-axis. The default is None. Same options as x_lim.
+    yt_lim : list, optional
+        Limits of the secondary y-axis. The default is None. Same options as x_lim.
+    x_ticks : list, optional
+        Ticks values to be shown on the x-axis. The default is None.
+    y_ticks : list, optional
+        Ticks values to be shown on the y-axis. The default is None.
+    yt_ticks : list, optional
+        Ticks values to be shown on the secondary y-axis. The default is None.
     legend : str, optional
-        contains info on the legend location. To avoid printing the legend
-        (also in case it is empty) set it to None.
-        The default is 'best'.
+        Contains info on the legend location. To avoid printing the legend (also in case it is empty), set it to None. The default is 'best'.
     ncol_leg : int, optional
-        number of columns in the legend. The default is 1.
+        Number of columns in the legend. The default is 1.
     annotate_lttrs : bool, optional
-        if True, each plot is assigned a letter between () in the lower left
-        corner. The default is False. If a string is given, the string is used
-        as the letter in the plot even for single plots.
-    annotate_lttrs_loc: str.
-        default is 'down', if 'up' is given, the letters are placed on the left
-        top corner.
+        If True, each plot is assigned a letter in the lower left corner. The default is False. If a string is given, the string is used as the letter in the plot even for single plots.
+    annotate_lttrs_loc : str
+        Placement of annotation letters. 'down' for bottom-left, 'up' for top-left. The default is 'down'.
     pdf : bool, optional
-        if True, the figure is saved also in pdf in the output folder.
-        The default is False, so only a png file with 300dpi is saved
-    transparency : bool, optional
-        if True, background of PNG figure is transparent, defautls is False.
-    subfolder : str, optional
-        name of the subfolder inside the output folder where the output will
-        be saved. If the folder does not exists, it is created.
-        The default is None.
+        If True, saves the figure also in PDF format in the output folder. The default is False, so only a PNG file with
     '''
 
     fig_adj_par = fig_par[0:6]
@@ -611,7 +593,7 @@ def _annotate_outliers_in_plot(ax, df_ave, df_std, y_lim):
         DataFrame containing the average values used in the plot.
     df_std : pandas.DataFrame
         DataFrame containing the standard deviation values corresponding
-        to `df_ave`.
+        to df_ave.
     y_lim : list of [float, float]
         A list of two floats representing the minimum (y_lim[0]) and
         maximum (y_lim[1]) limits of the y-axis.
@@ -619,7 +601,7 @@ def _annotate_outliers_in_plot(ax, df_ave, df_std, y_lim):
     Returns
     -------
     None
-        Modifies the provided Axes object (`ax`) by adding annotations.
+        Modifies the provided Axes object (ax) by adding annotations.
 
     """
     dx = 0.15 * len(df_ave.index)
@@ -683,25 +665,16 @@ def _annotate_outliers_in_plot(ax, df_ave, df_std, y_lim):
 
 
 class Fragmenter:
+
     """
-    taken from https://github.com/simonmb/fragmentation_algorithm
+    Class taken from https://github.com/simonmb/fragmentation_algorithm.
     The original version of this algorithm was published in:
-        Flexible Heuristic Algorithm for Automatic Molecule Fragmentation:
-        Application to the UNIFAC Group Contribution Model
-    DOI: 10.1186/s13321-019-0382-39
+    "Flexible Heuristic Algorithm for Automatic Molecule Fragmentation:
+    Application to the UNIFAC Group Contribution Model
+    DOI: 10.1186/s13321-019-0382-39."
     MIT License
 
-    Copyright (c) 2019 Simon
-
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
+    ...
 
     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
     IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -710,8 +683,6 @@ class Fragmenter:
     LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
-
-
     """
 
     # tested with Python 3.8.8 and RDKit version 2021.09.4
@@ -2389,6 +2360,7 @@ class Project:
         legend_x_anchor=1, legend_y_anchor=1.02, legend_labelspacing=0.5,
         annotate_lttrs=False,
         note_plt=None):
+
         """
         Generates a bar plot displaying average values with optional standard deviation
         bars for a specified parameter from either files or samples. This function allows
@@ -2403,65 +2375,46 @@ class Project:
         for additional context.
 
         Parameters:
-        - `filename='plot'`: Name for the output plot file. Default is 'plot'.
-        - `files_or_samples='samples'`: Specifies whether to plot data from 'files'
+        filename (str): Name for the output plot file. Default is 'plot'.
+        files_or_samples (str): Specifies whether to plot data from 'files'
             or 'samples'. Default is 'samples'.
-        - `param='conc_vial_mg_L'`: The parameter to plot, such as 'conc_vial_mg_L'.
+        param (str): The parameter to plot, such as 'conc_vial_mg_L'.
             Default is 'conc_vial_mg_L'.
-        - `aggr=False`: Boolean indicating whether to aggregate data by functional groups.
+        aggr (bool): Boolean indicating whether to aggregate data by functional groups.
             Default is False, meaning no aggregation.
-        - `min_y_thresh=None`: Minimum y-value threshold for including data in the plot.
+        min_y_thresh (float, optional): Minimum y-value threshold for including data in the plot.
             Default is None, including all data.
-        - `only_samples_to_plot=None`: List of samples to include in the plot.
+        only_samples_to_plot (list, optional): List of samples to include in the plot.
             Default is None, including all samples.
-        - `rename_samples=None`: Dictionary to rename samples in the plot.
+        rename_samples (dict, optional): Dictionary to rename samples in the plot.
             Default is None, using original names.
-        - `reorder_samples=None`: List specifying the order of samples in the plot.
+        reorder_samples (list, optional): List specifying the order of samples in the plot.
             Default is None, using original order.
-        - `item_to_color_to_hatch=None`: DataFrame mapping items to specific colors and hatching patterns.
+        item_to_color_to_hatch (DataFrame, optional): DataFrame mapping items to specific colors and hatching patterns.
             Default is None, using default colors and no hatching.
-        - `paper_col=.8`: Background color of the plot area.
-            Default is .8, a light grey.
-        - `fig_hgt_mlt=1.5`: Multiplier for the figure height to adjust plot size.
-            Default is 1.5.
-        - `xlab_rot=0`: Rotation angle for x-axis labels.
-            Default is 0, meaning no rotation.
-        - `annotate_outliers=True`: Boolean indicating whether to annotate outliers exceeding `y_lim`.
+        paper_col (float): Background color of the plot area. Default is .8, a light grey.
+        fig_hgt_mlt (float): Multiplier for the figure height to adjust plot size. Default is 1.5.
+        xlab_rot (int): Rotation angle for x-axis labels. Default is 0, meaning no rotation.
+        annotate_outliers (bool): Boolean indicating whether to annotate outliers exceeding y_lim.
             Default is True.
-        - `color_palette='deep'`: Color palette for the plot.
-            Default is 'deep'.
-        - `y_lab=None`: Label for the y-axis.
-            Default is None, using parameter name as label.
-        - `y_lim=None`: Limits for the y-axis.
-            Default is None, automatically determined.
-        - `y_ticks=None`: Custom tick marks for the y-axis.
-            Default is None, automatically determined.
-        - `yt_sum=False`: Boolean indicating whether to display a sum on a secondary y-axis.
-            Default is False.
-        - `yt_lim=None`: Limits for the secondary y-axis.
-            Default is None, automatically determined.
-        - `yt_lab=None`: Label for the secondary y-axis.
-            Default is None, using parameter name as label.
-        - `yt_ticks=None`: Custom tick marks for the secondary y-axis.
-            Default is None, automatically determined.
-        - `yt_sum_label='total\n(right axis)'`: Label for the sum on the secondary y-axis.
-            Default is 'total\n(right axis)'.
-        - `legend_location='best'`: Location of the legend within or outside the plot area.
-            Default is 'best', automatically determining the best location.
-        - `legend_columns=1`: Number of columns in the legend.
-            Default is 1.
-        - `legend_x_anchor=1`: X-anchor for the legend when placed outside the plot area.
-            Default is 1.
-        - `legend_y_anchor=1.02`: Y-anchor for the legend when placed outside the plot area.
-            Default is 1.02.
-        - `legend_labelspacing=0.5`: Spacing between labels in the legend.
-            Default is 0.5.
-        - `annotate_lttrs=False`: Boolean indicating whether to annotate letters for statistical significance.
-            Default is False.
-        - `note_plt=None`: Optional note to add to the plot for additional context.
-            Default is None.
-
+        color_palette (str): Color palette for the plot. Default is 'deep'.
+        y_lab (str, optional): Label for the y-axis. Default is None, using parameter name as label.
+        y_lim (tuple[float, float], optional): Limits for the y-axis. Default is None, automatically determined.
+        y_ticks (list[float], optional): Custom tick marks for the y-axis. Default is None, automatically determined.
+        yt_sum (bool): Boolean indicating whether to display a sum on a secondary y-axis. Default is False.
+        yt_lim (tuple[float, float], optional): Limits for the secondary y-axis. Default is None, automatically determined.
+        yt_lab (str, optional): Label for the secondary y-axis. Default is None, using parameter name as label.
+        yt_ticks (list[float], optional): Custom tick marks for the secondary y-axis. Default is None, automatically determined.
+        yt_sum_label (str): Label for the sum on the secondary y-axis. Default is 'total\n(right axis)'.
+        legend_location (str): Location of the legend within or outside the plot area. Default is 'best'.
+        legend_columns (int): Number of columns in the legend. Default is 1.
+        legend_x_anchor (float): X-anchor for the legend when placed outside the plot area. Default is 1.
+        legend_y_anchor (float): Y-anchor for the legend when placed outside the plot area. Default is 1.02.
+        legend_labelspacing (float): Spacing between labels in the legend. Default is 0.5.
+        annotate_lttrs (bool): Boolean indicating whether to annotate letters for statistical significance. Default is False.
+        note_plt (str, optional): Optional note to add to the plot for additional context. Default is None.
         """
+
         # create folder where Plots are stored
         out_path = plib.Path(Project.out_path, 'plots')
         out_path.mkdir(parents=True, exist_ok=True)

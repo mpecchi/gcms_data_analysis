@@ -5,4 +5,3 @@ gcms_data_analysis
    :maxdepth: 4
 
    gcms_data_analysis
-   setup
