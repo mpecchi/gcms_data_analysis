@@ -2348,18 +2348,18 @@ class Project:
         print('Info: save_samples_param_aggrrep: ', name,' saved')
 
     def plot_ave_std(self, filename='plot', files_or_samples='samples',
-        param='conc_vial_mg_L', aggr=False, min_y_thresh=None,
-        only_samples_to_plot=None, rename_samples=None, reorder_samples=None,
-        item_to_color_to_hatch=None,
-        paper_col=.8, fig_hgt_mlt=1.5, xlab_rot=0, annotate_outliers=True,
-        color_palette='deep',
-        y_lab=None, y_lim=None, y_ticks=None,
-        yt_sum=False, yt_lim=None, yt_lab=None, yt_ticks=None,
-        yt_sum_label='total\n(right axis)',
-        legend_location='best', legend_columns=1,
-        legend_x_anchor=1, legend_y_anchor=1.02, legend_labelspacing=0.5,
-        annotate_lttrs=False,
-        note_plt=None):
+                     param='conc_vial_mg_L', aggr=False, min_y_thresh=None,
+                     only_samples_to_plot=None, rename_samples=None, reorder_samples=None,
+                     item_to_color_to_hatch=None,
+                     paper_col=.8, fig_hgt_mlt=1.5, xlab_rot=0, annotate_outliers=True,
+                     color_palette='deep',
+                     y_lab=None, y_lim=None, y_ticks=None,
+                     yt_sum=False, yt_lim=None, yt_lab=None, yt_ticks=None,
+                     yt_sum_label='total\n(right axis)',
+                     legend_location='best', legend_columns=1,
+                     legend_x_anchor=1, legend_y_anchor=1.02, legend_labelspacing=0.5,
+                     annotate_lttrs=False,
+                     note_plt=None):
 
         """
         Generates a bar plot displaying average values with optional standard deviation
@@ -2375,44 +2375,75 @@ class Project:
         for additional context.
 
         Parameters:
+
         filename (str): Name for the output plot file. Default is 'plot'.
+
         files_or_samples (str): Specifies whether to plot data from 'files'
             or 'samples'. Default is 'samples'.
+
         param (str): The parameter to plot, such as 'conc_vial_mg_L'.
             Default is 'conc_vial_mg_L'.
+
         aggr (bool): Boolean indicating whether to aggregate data by functional groups.
             Default is False, meaning no aggregation.
+
         min_y_thresh (float, optional): Minimum y-value threshold for including data in the plot.
             Default is None, including all data.
+
         only_samples_to_plot (list, optional): List of samples to include in the plot.
             Default is None, including all samples.
+
         rename_samples (dict, optional): Dictionary to rename samples in the plot.
             Default is None, using original names.
+
         reorder_samples (list, optional): List specifying the order of samples in the plot.
             Default is None, using original order.
+
         item_to_color_to_hatch (DataFrame, optional): DataFrame mapping items to specific colors and hatching patterns.
             Default is None, using default colors and no hatching.
+
         paper_col (float): Background color of the plot area. Default is .8, a light grey.
+
         fig_hgt_mlt (float): Multiplier for the figure height to adjust plot size. Default is 1.5.
+
         xlab_rot (int): Rotation angle for x-axis labels. Default is 0, meaning no rotation.
+
         annotate_outliers (bool): Boolean indicating whether to annotate outliers exceeding y_lim.
             Default is True.
+
         color_palette (str): Color palette for the plot. Default is 'deep'.
+
         y_lab (str, optional): Label for the y-axis. Default is None, using parameter name as label.
+
         y_lim (tuple[float, float], optional): Limits for the y-axis. Default is None, automatically determined.
+
         y_ticks (list[float], optional): Custom tick marks for the y-axis. Default is None, automatically determined.
+
         yt_sum (bool): Boolean indicating whether to display a sum on a secondary y-axis. Default is False.
+
         yt_lim (tuple[float, float], optional): Limits for the secondary y-axis. Default is None, automatically determined.
+
         yt_lab (str, optional): Label for the secondary y-axis. Default is None, using parameter name as label.
+
         yt_ticks (list[float], optional): Custom tick marks for the secondary y-axis. Default is None, automatically determined.
-        yt_sum_label (str): Label for the sum on the secondary y-axis. Default is 'total\n(right axis)'.
+
+        yt_sum_label (str): Label for the sum on the secondary y-axis. Default is 'total (right axis)'.
+
         legend_location (str): Location of the legend within or outside the plot area. Default is 'best'.
+
         legend_columns (int): Number of columns in the legend. Default is 1.
+
         legend_x_anchor (float): X-anchor for the legend when placed outside the plot area. Default is 1.
+
         legend_y_anchor (float): Y-anchor for the legend when placed outside the plot area. Default is 1.02.
+
         legend_labelspacing (float): Spacing between labels in the legend. Default is 0.5.
+
         annotate_lttrs (bool): Boolean indicating whether to annotate letters for statistical significance. Default is False.
+
         note_plt (str, optional): Optional note to add to the plot for additional context. Default is None.
+
+
         """
 
         # create folder where Plots are stored
