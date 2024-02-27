@@ -45,51 +45,6 @@ def get_calibration_error(name0, name1, calibration, xrange=[10, 200], steps=100
     mse = np.average(abs(line0-line1)/line1)*100
     return mse
 
-
-#%%
-folder_path = plib.Path(r"C:\Users\mp933\OneDrive - Cornell University\Python\PyGCMS\Input\RCSSust")
-if 0:
-    in_path = folder_path
-    out_path_cal = plib.Path(folder_path, 'output_tanimoto')
-    out_path_cal.mkdir(parents=True, exist_ok=True)
-    calibration = pd.read_excel(plib.Path(in_path, 'calibration88.xlsx'),
-                        engine='openpyxl', index_col='Name')
-
-    combs = combinations(calibration.index.tolist(), 2)
-    tanimoto_error = pd.DataFrame(columns=['CalErr', 'DistMW', 'TanimS'], index=range(3915))
-    for c, (name0, name1) in enumerate(combs):
-        tanimoto_error.loc[c, 'CalErr'] = get_calibration_error(name0, name1, calibration)
-        tanimoto_error.loc[c, 'DistMW'] = abs(calibration.loc[name0,'MW'] - calibration.loc[name1,'MW'])
-        try:
-            smis = [calibration.loc[name0, 'canonical_smiles'],
-                    calibration.loc[name1, 'canonical_smiles']]
-            mols = [Chem.MolFromSmiles(smi) for smi in smis]
-            fps = [GetMorganFingerprintAsBitVect(mol, 2, nBits=1024) for mol in mols]
-            # perform Tanimoto similarity
-            tanimoto_error.loc[c, 'TanimS'] = DataStructs.TanimotoSimilarity(fps[0], fps[1])
-        except TypeError:
-            tanimoto_error.loc[c, 'TanimS'] = np.nan
-    tanimoto_error.to_excel(plib.Path(out_path_cal, 'tanimoto_error.xlsx'))
-    fig, ax, axt, fig_par = figure_create(rows=1, cols=1, plot_type=0, hgt_mltp=1.2,
-                                    paper_col=1.4)
-
-    aa = ax[0].scatter(tanimoto_error['TanimS'].values, tanimoto_error['CalErr'].values,
-                    c=tanimoto_error['DistMW'].values)
-    ax[0].set_yscale('log')
-    plt.colorbar(aa, label=r'$\Delta$MW [atomic mass unit]')
-    plt.hlines(y=100, xmin=0, xmax=1, color='grey', linestyle='dotted')
-    plt.vlines(x=.4, ymin=0, ymax=100, color='grey', linestyle='dashed')
-    ax[0].annotate('default\nsetting', ha='left', va='bottom',
-                xycoords='axes fraction',
-                xy=(0.3, .01))
-    ax[0].annotate('Error = 100%', ha='left', va='bottom',
-                xycoords='axes fraction',
-                xy=(0.8, .6))
-    figure_save('tanimoto_error', out_path_cal, fig, ax, axt, fig_par,
-            x_lab='Tanimoto Similarity [-]', x_lim=[0, 1], y_lab='Average error [%]',
-            legend=None, tight_layout=True)
-
-
 #%%
 
 Project.set_folder_path(folder_path)
@@ -192,6 +147,84 @@ gcms.plot_ave_std(param='fraction_of_sample_fr', min_y_thresh=0.01,
 gcms.plot_ave_std(param='fraction_of_sample_fr', aggr=True, min_y_thresh=0.01,
     y_lim=[0, .5], color_palette='Set2')
 
+#%%
+run_tanimoto_analysis = True
+if run_tanimoto_analysis:
+    in_path = folder_path
+    out_path_cal = plib.Path(folder_path, 'output_tanimoto')
+    out_path_cal.mkdir(parents=True, exist_ok=True)
+    calibration = pd.read_excel(plib.Path(in_path, 'calibration88.xlsx'),
+                        engine='openpyxl', index_col='Name')
 
+    combs = combinations(calibration.index.tolist(), 2)
+    tanimoto_error = pd.DataFrame(columns=['CalErr', 'DistMW', 'TanimS'], index=range(3915))
+    for c, (name0, name1) in enumerate(combs):
+        tanimoto_error.loc[c, 'CalErr'] = get_calibration_error(name0, name1, calibration)
+        tanimoto_error.loc[c, 'DistMW'] = abs(calibration.loc[name0,'MW'] - calibration.loc[name1,'MW'])
+        try:
+            smis = [calibration.loc[name0, 'canonical_smiles'],
+                    calibration.loc[name1, 'canonical_smiles']]
+            mols = [Chem.MolFromSmiles(smi) for smi in smis]
+            fps = [GetMorganFingerprintAsBitVect(mol, 2, nBits=1024) for mol in mols]
+            # perform Tanimoto similarity
+            tanimoto_error.loc[c, 'TanimS'] = DataStructs.TanimotoSimilarity(fps[0], fps[1])
+        except TypeError:
+            tanimoto_error.loc[c, 'TanimS'] = np.nan
+    tanimoto_error.to_excel(plib.Path(out_path_cal, 'tanimoto_error.xlsx'))
+    fig, ax, axt, fig_par = figure_create(rows=1, cols=1, plot_type=0, hgt_mltp=1.2,
+                                    paper_col=1.4)
+
+    aa = ax[0].scatter(tanimoto_error['TanimS'].values, tanimoto_error['CalErr'].values,
+                    c=tanimoto_error['DistMW'].values)
+    ax[0].set_yscale('log')
+    plt.colorbar(aa, label=r'$\Delta$MW [atomic mass unit]')
+    plt.hlines(y=100, xmin=0, xmax=1, color='grey', linestyle='dotted')
+    plt.vlines(x=.4, ymin=0, ymax=100, color='grey', linestyle='dashed')
+    ax[0].annotate('default\nsetting', ha='left', va='bottom',
+                xycoords='axes fraction',
+                xy=(0.3, .01))
+    ax[0].annotate('Error = 100%', ha='left', va='bottom',
+                xycoords='axes fraction',
+                xy=(0.8, .6))
+    figure_save('tanimoto_error', out_path_cal, fig, ax, axt, fig_par,
+            x_lab='Tanimoto Similarity [-]', x_lim=[0, 1], y_lab='Average error [%]',
+            legend=None, tight_layout=True)
+
+    # create and export the similarity table for tetradecanoic acid
+    cpmnds = gcms.compounds_properties.set_index('iupac_name')
+    cpmnds = cpmnds[~cpmnds.index.duplicated(keep='first')].copy()
+    iupac = cpmnds.index[0]
+    mws = [cpmnds.loc[iupac, 'molecular_weight']]
+    smis = [cpmnds.loc[iupac, 'canonical_smiles']]
+    names_cal = [iupac]
+    # then add all properties for all calibrated compounds
+    # if the sample was not derivatized (default)
+    # if not self.is_files_deriv[filename]:
+    for c in cpmnds.index.tolist()[1:6]:
+        names_cal.append(c)
+        # print(df_comps.index)
+        smis.append(cpmnds.loc[c, 'canonical_smiles'])
+        mws.append(cpmnds.loc[c, 'molecular_weight'])
+        # calculate the delta mw with all calib compounds
+        delta_mw = np.abs(np.asarray(mws)[0]
+                    - np.asarray(mws)[1:])
+        # get mols and fingerprints from rdkit for each comp
+        mols = [Chem.MolFromSmiles(smi) for smi in smis]
+        fps = [GetMorganFingerprintAsBitVect(ml, 2, nBits=1024)
+        for ml in mols]
+        # perform Tanimoto similarity betwenn the first and all
+        # other compounds
+        s = DataStructs.BulkTanimotoSimilarity(fps[0], fps[1:])
+        # create a df with results
+        df_sim = pd.DataFrame(data={'name': names_cal[1:],
+        'smiles': smis[1:], 'Similarity': s, 'delta_mw': delta_mw})
+        # put the index title as the comp
+        df_sim.set_index('name', inplace=True)
+        df_sim.index.name = iupac
+        # sort values based on similarity and delta mw
+        df_sim = df_sim.sort_values(['Similarity', 'delta_mw'],
+                                ascending=[False, True])
+    df_sim.to_excel(plib.Path(out_path_cal, 'similarity_table_tetradecanoic.xlsx'))
 
 # %%
+

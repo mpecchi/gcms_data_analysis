@@ -6,6 +6,7 @@ example/data/compounds_properties.xlsx
 example/data/deriv_compounds_properties.xlsx
 tests/data_for_testing/output/
 RCSdata/data/output/
+RCSdata/data/output_tanimoto/
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/
