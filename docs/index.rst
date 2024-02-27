@@ -10,7 +10,7 @@ Welcome to gcms_data_analysis's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-modules
+   source/modules
 
 Indices and tables
 ==================
