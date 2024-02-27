@@ -1,0 +1,22 @@
+[Header]
+Data File Name	C:\Users\user\Documents\mp933\ASE Matrix Day 2\FW SCDD 8_2_rxi300rt5sr10_15.qgd
+Output Date	4/14/2023
+Output Time	11:48:59 AM
+
+[MC Peak Table]
+# of Peaks	12
+Mass	TIC
+Peak#	Ret.Time	Proc.From	Proc.To	Mass	Area	Height	A/H	Conc.	Mark	Name	Ret. Index	Area%	Height%	SI	CAS #
+1	6.027	6.013	6.040	TIC	14698	12802	1.15	0.27	   			0.27	0.70	0	0-0-0
+2	38.125	38.073	38.193	TIC	53613	18373	2.92	0.98	   	Myristic acid, TMS derivative		0.98	1.00	92	18603-17-3
+3	41.744	41.687	41.780	TIC	25213	8775	2.87	0.46	   	Palmitelaidic acid, TMS derivative		0.46	0.48	89	82326-15-6
+4	42.161	42.087	42.247	TIC	1402990	496504	2.83	25.75	   	Palmitic Acid, TMS derivative		25.75	27.07	94	55520-89-3
+5	45.258	45.187	45.307	TIC	605137	202599	2.99	11.11	   	9,12-Octadecadienoic acid (Z,Z)-, TMS derivative		11.11	11.05	95	56259-7-5
+6	45.370	45.307	45.440	TIC	1823587	594688	3.07	33.47	 V 	Oleic acid, TMS derivative		33.47	32.42	94	96851-47-7
+7	45.496	45.440	45.580	TIC	132973	39855	3.34	2.44	 V 	Oleic acid, TMS derivative		2.44	2.17	93	96851-47-7
+8	45.854	45.767	45.953	TIC	913981	300068	3.05	16.77	   	Stearic acid, TMS derivative		16.77	16.36	95	18748-91-9
+9	51.577	51.520	51.647	TIC	121348	39594	3.06	2.23	   	1-Monopalmitin, 2TMS derivative		2.23	2.16	94	1188-74-5
+10	54.080	54.020	54.100	TIC	92541	32499	2.85	1.70	   	1-Monolinolein, 2TMS derivative		1.70	1.77	75	54284-45-6
+11	54.134	54.100	54.227	TIC	195727	66863	2.93	3.59	 V 	1-Monooleoylglycerol, 2TMS derivative		3.59	3.65	87	54284-47-8
+12	54.487	54.427	54.553	TIC	67134	21601	3.11	1.23	   	Glycerol monostearate, 2TMS derivative		1.23	1.18	90	1188-75-6
+
