@@ -46,6 +46,7 @@ def test_load_class_code_fractions(gcms, checked_load_class_code_fractions):
 
 def test_load_calibrations(gcms, checked_load_calibrations,
                            checked_is_calibrations_deriv):
+    files_info = gcms.create_files_info()
     calib_to_check, is_calib_deriv_to_check = gcms.load_calibrations()
     for to_check, checked in zip(calib_to_check, checked_load_calibrations):
         assert to_check == checked
@@ -84,8 +85,8 @@ def test_load_calibrations_false_or_none(gcms, calibration_name):
     calib_to_check, is_calib_deriv_to_check = gcms.load_calibrations()
     assert calib_to_check == {}
     assert is_calib_deriv_to_check == {}
-    assert gcms.calibrations_loaded == True
-    assert gcms.calibrations_not_present == True
+    assert gcms.calibrations_loaded is True
+    assert gcms.calibrations_not_present is True
 
 def test_list_of_all_compounds(gcms, checked_list_of_all_compounds):
     to_check = gcms.create_list_of_all_compounds()

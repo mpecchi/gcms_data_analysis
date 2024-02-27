@@ -502,9 +502,28 @@ def name_to_properties(comp_name, df, df_class_code_frac):
                 df.loc[comp_name, fg_mf_col] = df.loc[comp_name, ha_mf_col]
         # Handle hetero atoms sum separately if needed
         if hetero_atoms:
-            df.loc[comp_name, 'fg_hetero_atoms'] = df.loc[comp_name, ['fg_' + e for e in hetero_atoms]].sum(axis=1).astype(int)
-            df.loc[comp_name, 'fg_mf_hetero_atoms'] = df.loc[comp_name, ['fg_mf_' + e for e in hetero_atoms]].sum(axis=1)
+            fg_columns = ['fg_' + e for e in hetero_atoms]
+            fg_mf_columns = ['fg_mf_' + e for e in hetero_atoms]
 
+            # Handle case when selection returns a Series or a single value
+            if isinstance(df.loc[comp_name, fg_columns], pd.Series):
+                fg_sum = df.loc[comp_name, fg_columns].astype(int).sum()
+            else:  # If it's not a Series, it could be a single value (if only one column is selected)
+                fg_sum = df.loc[comp_name, fg_columns].astype(int)
+
+            df.loc[comp_name, 'fg_hetero_atoms'] = fg_sum
+
+            # For 'fg_mf_hetero_atoms', assuming you want to assign the value directly
+            # Here, you might need to handle single/multiple selections differently based on your needs
+            if isinstance(df.loc[comp_name, fg_mf_columns], pd.Series):
+                # This assumes you want to somehow aggregate or select from the Series
+                # Example: selecting the first element if there are multiple. Adjust as needed.
+                df.loc[comp_name, 'fg_mf_hetero_atoms'] = df.loc[comp_name, fg_mf_columns].iloc[0]
+            else:
+                # Direct assignment if it's a single value
+                df.loc[comp_name, 'fg_mf_hetero_atoms'] = df.loc[comp_name, fg_mf_columns]
+            df['fg_hetero_atoms'] = df['fg_hetero_atoms'].fillna(0).astype('int64')
+            df['fg_mf_hetero_atoms'] = df['fg_mf_hetero_atoms'].fillna(0).astype(float)
         # Ensure Si is handled correctly if present
     if 'Si' in elements:
         df.loc[comp_name, 'fg_Si'] = df.loc[comp_name, 'el_Si'].astype(int)
@@ -609,7 +628,10 @@ def _annotate_outliers_in_plot(ax, df_ave, df_std, y_lim):
     tform = blended_transform_factory(ax.transData, ax.transAxes)
     dfao = pd.DataFrame(columns=['H/L', 'xpos', 'ypos', 'ave', 'std', 'text'])
     dfao['ave'] = df_ave.transpose().to_numpy().flatten().tolist()
-    dfao['std'] = df_std.transpose().to_numpy().flatten().tolist()
+    if df_std.empty:
+        df_std = np.zeros(len(dfao['ave']))
+    else:
+        dfao['std'] = df_std.transpose().to_numpy().flatten().tolist()
     try:
         dfao['xpos'] = [p.get_x() + p.get_width()/2 for p in ax.patches]
     except ValueError:  # otherwise the masking adds twice the columns
@@ -1646,6 +1668,12 @@ class Project:
         unique_deriv_compounds = self.list_of_all_deriv_compounds
         unique_underiv_compounds = [",".join(name.split(',')[:-1])
                                     for name in unique_deriv_compounds]
+        # unique_underiv_compounds = []
+        # for name in unique_deriv_compounds:
+        #     underiv_name = ",".join(name.split(',')[:-1])
+        #     if underiv_name == '':
+        #         underiv_name = name
+        #     unique_underiv_compounds.append(underiv_name)
         dcpdf = pd.DataFrame(index=pd.Index(unique_underiv_compounds))
         dcpdf.index.name = 'comp_name'
         dcpdf['deriv_comp_name'] = unique_deriv_compounds
@@ -1883,6 +1911,11 @@ class Project:
                 conc_mg_l/tot_sample_conc*sample_yield_feed_basis
             self.files[filename].loc[comp,
                 'compound_used_for_calibration'] = comps_for_calib
+        if np.isnan(self.files[filename]['conc_vial_mg_L']).all():
+            print(f"WARNING: the file {filename} does not contain any ",
+                  "compound for which a calibration nor a semicalibration is available.",
+                  "\n either lower similarity thresholds, add calibration compounds, or",
+                  "calibration_file=False in files_info.xlsx")
         return self.files[filename]
 
     def add_stats_to_files_info(self):
@@ -2106,7 +2139,8 @@ class Project:
             for c in list(self.deriv_compounds_properties):
                 if c not in cols_with_fg_mf_labs:
                     cols_with_fg_mf_labs.append(c)
-        fg_mf_labs = [c for c in cols_with_fg_mf_labs if c.startswith('fg_mf_')]
+        fg_mf_labs = [c for c in cols_with_fg_mf_labs if c.startswith('fg_mf_')
+                      if c != 'fg_mf_total']
         fg_labs = [c[6:] for c in fg_mf_labs]
         # create a df with iupac name index and fg_mf columns (underiv and deriv)
         comps_df = self.compounds_properties.set_index('iupac_name')
@@ -2204,7 +2238,8 @@ class Project:
             for c in list(self.deriv_compounds_properties):
                 if c not in cols_with_fg_mf_labs:
                     cols_with_fg_mf_labs.append(c)
-        fg_mf_labs = [c for c in cols_with_fg_mf_labs if c.startswith('fg_mf_')]
+        fg_mf_labs = [c for c in cols_with_fg_mf_labs if c.startswith('fg_mf_')
+                      if c != 'fg_mf_total']
         fg_labs = [c[6:] for c in fg_mf_labs]
         # create a df with iupac name index and fg_mf columns (underiv and deriv)
         comps_df = self.compounds_properties.set_index('iupac_name')
@@ -2567,7 +2602,7 @@ class Project:
                     loc=legend_location, ncol=legend_columns,
                     labelspacing=legend_labelspacing)
         # annotate ave+-std at the top of outliers bar (exceeding y_lim)
-        if annotate_outliers and (y_lim is not None) and (not df_std.empty):
+        if annotate_outliers and (y_lim is not None):# and (not df_std.empty):
             _annotate_outliers_in_plot(ax[0], df_ave, df_std, y_lim)
         if note_plt:
             ax[0].annotate(note_plt, ha='left', va='bottom',
@@ -2577,3 +2612,5 @@ class Project:
                 y_ticks=y_ticks, yt_ticks=yt_ticks, tight_layout=True,
                 annotate_lttrs=annotate_lttrs, grid=Project.plot_grid)
 
+
+# %%

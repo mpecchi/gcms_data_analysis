@@ -29,7 +29,12 @@ def print_checked_df_to_script_text(df):
     print("    data={")
     # Print each column's data
     for key, values in df_dict.items():
-        print(f"        '{key}': {values},")
+        # Replace NaN values with np.nan for printing
+        values_with_nan = [f"np.nan" if pd.isnull(value) else value for value in values]
+        # Prepare the string representation of the list, handling np.nan specially
+        values_str = str(values_with_nan).replace("'np.nan'", "np.nan")
+
+        print(f"        '{key}': {values_str},")
     # Close the data dictionary
     print("    }")
     # Close the DataFrame construction

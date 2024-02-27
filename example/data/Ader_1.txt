@@ -14,3 +14,10 @@ Peak#	Ret.Time	Proc.From	Proc.To	Mass	Area	Height	A/H	Conc.	Mark	Name	Ret. Index
 6	45.253	45.187	45.307	TIC	519476	180850	2.87	10.28	   	9,12-Octadecadienoic acid (Z,Z)-, TMS derivative		10.28	10.79	95	56259-7-5
 7	45.369	45.307	45.440	TIC	1581666	501749	3.15	31.31	 V 	9-Octadecenoic acid, (Z)-, TMS derivative		31.31	29.94	94	96851-47-7
 8	45.492	45.440	45.600	TIC	143148	39018	3.67	2.83	 V 	9-Octadecenoic acid, (Z)-, TMS derivative		2.83	2.33	93	21556-26-3
+9	45.848	45.767	45.933	TIC	708404	234023	3.03	14.02	   	Stearic acid, TMS derivative		14.02	13.96	95	18748-91-9
+10	51.575	51.507	51.640	TIC	141155	46963	3.01	2.79	   	1-Monopalmitin, 2TMS derivative		2.79	2.80	95	1188-74-5
+11	54.073	54.020	54.093	TIC	90323	33913	2.66	1.79	   	1-Monolinolein, 2TMS derivative		1.79	2.02	83	54284-45-6
+12	54.132	54.093	54.233	TIC	235040	73197	3.21	4.65	 V 	1-Monooleoylglycerol, 2TMS derivative		4.65	4.37	87	54284-47-8
+13	54.486	54.420	54.553	TIC	80098	24959	3.21	1.59	   	Glycerol monostearate, 2TMS derivative		1.59	1.49	90	1188-75-6
+14	54.567	54.553	54.580	TIC	2823	3040	0.93	0.06	 V 			0.06	0.18	0	0-0-0
+
