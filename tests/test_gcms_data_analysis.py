@@ -10,7 +10,8 @@ def test_load_files_info(gcms, checked_files_info):
 
 def test_create_files_info(gcms, checked_created_files_info):
     to_check = gcms.create_files_info()
-    assert_frame_equal(to_check, checked_created_files_info,
+    to_check_sorted = to_check.sort_index()
+    assert_frame_equal(to_check_sorted, checked_created_files_info,
         check_exact=False, atol=1e-5, rtol=1e-5)
 
 
