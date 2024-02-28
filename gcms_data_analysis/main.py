@@ -7,6 +7,7 @@ Created on Mon Jun  5 10:45:31 2023
 
 
 #%%
+import marshal
 import pathlib as plib
 import numpy as np
 import pandas as pd
@@ -17,9 +18,9 @@ import ele
 import pubchempy as pcp
 from rdkit import Chem
 from rdkit.Chem import DataStructs
-from rdkit.Chem.AllChem import GetMorganFingerprintAsBitVect
-from rdkit.Chem.Draw import rdMolDraw2D
-from rdkit.Chem import MolFromSmiles
+from rdkit.Chem import rdmolops
+from rdkit.Chem.AllChem import GetMorganFingerprintAsBitVect # pylint: disable=no-name-in-module
+
 
 def figure_create(rows=1, cols=1, plot_type=0, paper_col=1,
     hgt_mltp=1, font='Dejavu Sans',
@@ -709,9 +710,7 @@ class Fragmenter:
 
     # tested with Python 3.8.8 and RDKit version 2021.09.4
 
-    from rdkit import Chem
-    import marshal as marshal
-    from rdkit.Chem import rdmolops
+
 
     # does a substructure match and then checks whether the match
     # is adjacent to previous matches
@@ -816,14 +815,14 @@ class Fragmenter:
                 if SMARTS != '':
                     self._fragmentation_scheme_group_number_lookup[SMARTS] = group_number
 
-                    mol_SMARTS = Fragmenter.Chem.MolFromSmarts(SMARTS)
+                    mol_SMARTS = Chem.MolFromSmarts(SMARTS)
                     self._fragmentation_scheme_pattern_lookup[SMARTS] = mol_SMARTS
 
     def fragment(self, SMILES_or_molecule):
 
         if type(SMILES_or_molecule) is str:
-            mol_SMILES = Fragmenter.Chem.MolFromSmiles(SMILES_or_molecule)
-            mol_SMILES = Fragmenter.Chem.AddHs(mol_SMILES) if self.match_hydrogens else mol_SMILES
+            mol_SMILES = Chem.MolFromSmiles(SMILES_or_molecule)
+            mol_SMILES = Chem.AddHs(mol_SMILES) if self.match_hydrogens else mol_SMILES
             is_valid_SMILES = mol_SMILES is not None
 
             if not is_valid_SMILES:
@@ -836,7 +835,7 @@ class Fragmenter:
         success = []
         fragmentation = {}
         fragmentation_matches = {}
-        for mol in Fragmenter.rdmolops.GetMolFrags(mol_SMILES, asMols = True):
+        for mol in rdmolops.GetMolFrags(mol_SMILES, asMols = True):
 
             this_mol_fragmentation, this_mol_success = self.__get_fragmentation(mol)
 
@@ -857,8 +856,8 @@ class Fragmenter:
     def fragment_complete(self, SMILES_or_molecule):
 
         if type(SMILES_or_molecule) is str:
-            mol_SMILES = Fragmenter.Chem.MolFromSmiles(SMILES_or_molecule)
-            mol_SMILES = Fragmenter.Chem.AddHs(mol_SMILES) if self.match_hydrogens else mol_SMILES
+            mol_SMILES = Chem.MolFromSmiles(SMILES_or_molecule)
+            mol_SMILES = Chem.AddHs(mol_SMILES) if self.match_hydrogens else mol_SMILES
             is_valid_SMILES = mol_SMILES is not None
 
             if not is_valid_SMILES:
@@ -867,7 +866,7 @@ class Fragmenter:
         else:
             mol_SMILES = SMILES_or_molecule
 
-        if len(Fragmenter.rdmolops.GetMolFrags(mol_SMILES)) != 1:
+        if len(rdmolops.GetMolFrags(mol_SMILES)) != 1:
             raise ValueError('fragment_complete does not accept multifragment molecules.')
 
         temp_fragmentations, success = self.__complete_fragmentation(mol_SMILES)
@@ -986,7 +985,7 @@ class Fragmenter:
 
             atoms_missing = set(range(0, Fragmenter.get_heavy_atom_count(mol_searched_in))).difference(atomIdxs_included_in_fragmentation)
 
-            new_fragmentation = Fragmenter.marshal.loads(Fragmenter.marshal.dumps(fragmentation))
+            new_fragmentation = marshal.loads(marshal.dumps(fragmentation))
 
             for atomIdx in atoms_missing:
                 for neighbor in mol_searched_in.GetAtomWithIdx(atomIdx).GetNeighbors():
@@ -1087,7 +1086,7 @@ class Fragmenter:
 
                         # make a deepcopy here, otherwise the variables are modified down the road
                         # marshal is used here because it works faster than copy.deepcopy
-                        this_SMARTS_fragmentation_so_far = Fragmenter.marshal.loads(Fragmenter.marshal.dumps(fragmentation_so_far))
+                        this_SMARTS_fragmentation_so_far = marshal.loads(marshal.dumps(fragmentation_so_far))
                         this_SMARTS_atomIdxs_included_in_fragmentation_so_far = atomIdxs_included_in_fragmentation_so_far.copy()
 
                         if not SMARTS in this_SMARTS_fragmentation_so_far:

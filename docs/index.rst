@@ -20,7 +20,7 @@ Welcome to gcms_data_analysis's documentation!
    :caption: Contents:
 
 
-   source/gcms_data_analysis
+   source/modules
 
 Indices and tables
 ==================

@@ -2,6 +2,7 @@ import pathlib as plib
 import pandas as pd
 import numpy as np
 import pytest
+import rdkit
 from gcms_data_analysis.main import Project
 
 @pytest.fixture
