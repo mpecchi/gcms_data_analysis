@@ -26,7 +26,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest --cov=your_package_name --cov-report=term
+        pytest --cov=gcms_data_analysis --cov-report=term
 
     - name: Generate Badge
       run: |
