@@ -4,6 +4,7 @@ on: [push, pull_request]
 
 jobs:
   build:
+
     runs-on: ubuntu-latest
 
     steps:
@@ -21,15 +22,16 @@ jobs:
 
     - name: Install pytest
       run: |
-        pip install pytest
+        pip install pytest pytest-cov
 
     - name: Run tests
-      run: pytest
+      run: |
+        pytest --cov=your_package_name --cov-report=term
 
     - name: Generate Badge
       run: |
         # Example: Generate badge based on test coverage percentage
-        COVERAGE=$(pytest --cov-report=term | grep -oP '(?<=TOTAL\s+)[^\s%]+')
+        COVERAGE=$(pytest --cov-report=xml | grep -oP '(?<=<report.*line-rate=")[^"]*')
         curl "https://img.shields.io/badge/coverage-$COVERAGE-green.svg" > coverage.svg
 
     - name: Upload Badge
