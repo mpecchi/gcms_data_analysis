@@ -7,7 +7,7 @@ with open("README.md", 'r', encoding="utf-8") as f:
 
 setup(
     name='gcms_data_analysis',  # Replace with your own package name
-    version='1.0.2',  # Start with a small version number and increment it with each release
+    version='1.0.3',  # Start with a small version number and increment it with each release
     author='Matteo Pecchi',  # Replace with your name
     description='Automatic analysis of GC-MS data',  # Provide a short description
     long_description=readmecontent,  # This will read your README file to use as the long description
