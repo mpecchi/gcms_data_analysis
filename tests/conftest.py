@@ -21,7 +21,7 @@ def checked_files_info():
             'total_sample_conc_in_vial_mg_L': [560.0000000000001, 560.0000000000001, 112.0, 112.0, 2800.0, 2800.0],
             'sample_yield_on_feedstock_basis_fr': [0.45, 0.46, 0.47, 0.48, 0.49, 0.5],
             'calibration_file': ['calibration', 'calibration', 'deriv_calibration', 'deriv_calibration', 'calibration', 'calibration'],
-            }
+        }
     )
     return files_info
 

@@ -4,8 +4,9 @@ import pandas as pd
 import numpy as np
 from pandas.testing import assert_frame_equal
 
-example_data_path = plib.Path(plib.Path(__file__).parent.parent,
-    'example/data/')
+# example_data_path = plib.Path(plib.Path(__file__).parent.parent,
+#     'example/data/')
+example_data_path = r"C:\Users\mp933\OneDrive - Cornell University\Python\gcms_data_analysis\example\data"
 Project.set_folder_path(example_data_path)
 gcms = Project()
 #%%

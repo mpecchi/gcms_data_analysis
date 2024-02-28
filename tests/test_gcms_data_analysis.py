@@ -10,8 +10,8 @@ def test_load_files_info(gcms, checked_files_info):
 
 def test_create_files_info(gcms, checked_created_files_info):
     to_check = gcms.create_files_info()
-    to_check_sorted = to_check.sort_index()
-    assert_frame_equal(to_check_sorted, checked_created_files_info,
+    # to_check_sorted = to_check.sort_index()
+    assert_frame_equal(to_check, checked_created_files_info,
         check_exact=False, atol=1e-5, rtol=1e-5)
 
 
@@ -173,6 +173,7 @@ def test_create_samples_info(gcms, checked_samples_info):
 
 def test_add_stats_to_samples_info_no_calibrations(gcms, checked_samples_info_no_calibrations):
     _ = gcms.create_files_info()
+
     gcms.files_info['calibration_file'] = False
     gcms.load_calibrations()
     _ = gcms.add_stats_to_files_info()

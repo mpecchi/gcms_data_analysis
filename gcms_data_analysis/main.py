@@ -1400,8 +1400,8 @@ class Project:
         input path if an existing 'files_info' file is not found. It autogenerates filenames,
         samples, and replicates based on the GCMS file names, saves the DataFrame to
         'files_info.xlsx', and sets it as the current 'files_info' attribute."""
-        filename = [a.parts[-1].split('.')[0]
-            for a in list(Project.in_path.glob('**/*.txt'))]
+        filename = sorted([a.parts[-1].split('.')[0]
+            for a in list(Project.in_path.glob('**/*.txt'))])
         samplename = [f.split('_')[0] for f in filename]
         replicate_number = [f.split('_')[1] for f in filename]
         files_info_no_defaults = pd.DataFrame({'filename':filename,
