@@ -21,16 +21,16 @@ def checked_files_info():
             'total_sample_conc_in_vial_mg_L': [560.0000000000001, 560.0000000000001, 112.0, 112.0, 2800.0, 2800.0],
             'sample_yield_on_feedstock_basis_fr': [0.45, 0.46, 0.47, 0.48, 0.49, 0.5],
             'calibration_file': ['calibration', 'calibration', 'deriv_calibration', 'deriv_calibration', 'calibration', 'calibration'],
-        }
+            }
     )
     return files_info
 
 @pytest.fixture
 def checked_created_files_info():
     created_files_info = pd.DataFrame(
-        index=pd.Index(['Ader_1', 'Ader_2', 'A_1', 'A_2', 'B_1', 'B_2'], name='filename'),
+        index=pd.Index(['A_1', 'A_2', 'Ader_1', 'Ader_2', 'B_1', 'B_2'], name='filename'),
         data={
-            'samplename': ['Ader', 'Ader', 'A', 'A', 'B', 'B'],
+            'samplename': ['A', 'A', 'Ader', 'Ader', 'B', 'B'],
             'replicate_number': ['1', '2', '1', '2', '1', '2'],
             'derivatized': [False, False, False, False, False, False],
             'calibration_file': [False, False, False, False, False, False],
