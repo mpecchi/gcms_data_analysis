@@ -5,12 +5,19 @@
 
 Welcome to gcms_data_analysis's documentation!
 ==============================================
+.. only:: html
+
+.. image:: https://readthedocs.org/projects/gcms-data-analysis/badge/?version=latest
+   :target: https://gcms-data-analysis.readthedocs.io/en/latest/?badge=latest
+   :alt: Documentation Status
+
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-   source/modules
+
+   source/gcms_data_analysis
 
 Indices and tables
 ==================
