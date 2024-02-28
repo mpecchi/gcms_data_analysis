@@ -11,6 +11,9 @@ Welcome to gcms_data_analysis's documentation!
    :target: https://gcms-data-analysis.readthedocs.io/en/latest/?badge=latest
    :alt: Documentation Status
 
+.. image:: https://github.com/mpecchi/gcms_data_analysis/workflows/CI/badge.svg
+    :target: https://github.com/mpecchi/gcms_data_analysis/actions
+    :alt: Test Status
 
 .. toctree::
    :maxdepth: 2
