@@ -29,7 +29,7 @@ jobs:
     - name: Generate Badge
       run: |
         # Example: Generate badge based on test coverage percentage
-        COVERAGE=$(pytest --cov-report=term | grep -oP '(?<=<report.*line-rate=")[^"]*')
+        COVERAGE=$(pytest --cov-report=term | grep -oP '(?<=TOTAL\s+)[^\s%]+')
         curl "https://img.shields.io/badge/coverage-$COVERAGE-green.svg" > coverage.svg
 
     - name: Upload Badge

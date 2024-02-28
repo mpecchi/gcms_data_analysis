@@ -13,6 +13,9 @@ setup(
     long_description=readmecontent,  # This will read your README file to use as the long description
     long_description_content_type='text/markdown',  # This is the format of your README file
     url='https://github.com/mpecchi/gcms_data_analysis/tree/main',  # Replace with the URL of your project
+    project_urls={
+        'Documentation': 'https://gcms-data-analysis.readthedocs.io/en/latest/',
+    },
     packages=find_packages(),  # This function will find all the packages in your project
     install_requires=[
         'pathlib', 'numpy', 'pandas', 'matplotlib', 'seaborn', 'ele', 'pubchempy',
