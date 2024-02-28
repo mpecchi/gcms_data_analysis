@@ -1,21 +1,27 @@
-gcms\_data\_analysis package
-============================
+gcms_data_analysis package
+==========================
 
-Submodules
-----------
-
-gcms\_data\_analysis.main module
---------------------------------
-
-.. automodule:: gcms_data_analysis.main
-   :members:
-   :undoc-members:
-   :show-inheritance:
+This package includes all the necessary modules for GCMS data analysis.
 
 Module contents
 ---------------
 
 .. automodule:: gcms_data_analysis
-   :members:
-   :undoc-members:
-   :show-inheritance:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+Submodules
+----------
+
+gcms_data_analysis.main module
+------------------------------
+
+The `main` module contains the core functionality of the GCMS data analysis package.
+
+.. automodule:: gcms_data_analysis.main
+    :members:
+    :undoc-members:
+    :show-inheritance:
+    :private-members:
+
