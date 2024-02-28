@@ -21,7 +21,6 @@ Welcome to gcms_data_analysis's documentation!
 
 
    source/gcms_data_analysis
-   coverage_html/d_fa1503808ed87272_main_py
 
 Indices and tables
 ==================
