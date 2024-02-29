@@ -1351,6 +1351,7 @@ class Project:
         self.stats_to_files_info_added = False
 
         self.samples_info = None
+        self.samples_info_std = None
         self.samples_info_created = False
         self.stats_to_samples_info_added = False
         self.samples = {}
@@ -1981,19 +1982,24 @@ class Project:
          # Create an aggregation dictionary
         agg_dict = {**{nc: 'mean' for nc in numcol},
             **{nnc: lambda x: list(x) for nnc in non_numcol}}
+
+        agg_dict_std = {**{nc: 'std' for nc in numcol},
+            **{nnc: lambda x: list(x) for nnc in non_numcol}}
         # Group by 'samplename' and apply aggregation, make sure 'samplename' is not part of the aggregation
         _samples_info = files_info.groupby('samplename').agg(agg_dict)
+        _samples_info_std = files_info.groupby('samplename').agg(agg_dict_std)
         self.samples_info = _samples_info.loc[:, non_numcol + numcol]
+        self.samples_info_std = _samples_info_std.loc[:, non_numcol + numcol]
         self.samples_info_created = True
         print('Info: create_samples_info: samples_info created')
-        return self.samples_info
+        return self.samples_info, self.samples_info_std
 
     def  create_samples_from_files(self):
         """Generates a DataFrame for each sample by averaging and calculating
         the standard deviation of replicates, creating a comprehensive
         dataset for each sample in the project."""
         if not self.samples_info_created:
-            _ = self.create_samples_info()
+            _, _ = self.create_samples_info()
         if not self.calibration_to_files_applied:
             self.apply_calibration_to_files()
         for samplename in self.samples_info.index:

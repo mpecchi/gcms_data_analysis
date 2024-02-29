@@ -167,7 +167,7 @@ def test_add_stats_to_files_info(gcms, checked_files_info_added_stats):
         check_exact=False, atol=1e-5, rtol=1e-5)
 
 def test_create_samples_info(gcms, checked_samples_info):
-    to_check = gcms.create_samples_info()
+    to_check, to_check_std = gcms.create_samples_info()
     assert_frame_equal(to_check, checked_samples_info,
         check_exact=False, atol=1e-5, rtol=1e-5)
 
