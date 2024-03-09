@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gcms_data_analysis"
+version = "1.0.3"
+authors = [{ name = "Matteo Pecchi" }]
+description = "Automatic analysis of GC-MS data"
+readme = "README.md"
+license = { file = "LICENSE" }  # Ensure the file name matches the case (e.g., LICENSE or license)
+
+# Dependencies directly under [project]
+dependencies = [
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "seaborn",
+    "ele",
+    "pubchempy",
+    "rdkit",
+    "openpyxl",
+    "pyarrow"
+]
+
+# Classifiers directly under [project]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+requires-python = ">=3.6"
+
+[project.urls]
+Homepage = "https://github.com/mpecchi/gcms_data_analysis/tree/main"
+Documentation = "https://gcms-data-analysis.readthedocs.io/en/latest/"
