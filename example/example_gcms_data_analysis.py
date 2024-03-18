@@ -5,7 +5,10 @@ from gcms_data_analysis import (
 )  # Import the Project class from the gcms_data_analysis package
 
 # Define the folder path where your data is located. Change this path to where you've stored your data files.
-folder_path = plib.Path(plib.Path(__file__).parent, "data")
+folder_path = plib.Path(plib.Path(__file__).parent, "example\data")
+folder_path = plib.Path(
+    r"C:\Users\mp933\OneDrive - Cornell University\Python\gcms_data_analysis\example\data"
+)
 
 # Set global configurations for the Project class.
 # These configurations affect all instances of the class.

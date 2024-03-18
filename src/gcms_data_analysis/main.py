@@ -514,7 +514,12 @@ def figure_save(
         )
 
 
-def name_to_properties(comp_name, df, df_class_code_frac):
+def name_to_properties(
+    comp_name: str,
+    df: pd.DataFrame,
+    dict_classes_to_codes: dict[str:str],
+    dict_classes_to_mass_fractions: dict[str:float],
+):
     """
     used to retrieve chemical properties of the compound indicated by the
     comp_name and to store those properties in the df
@@ -541,18 +546,15 @@ def name_to_properties(comp_name, df, df_class_code_frac):
         if GCname did not yield anything CompNotFound=GCname.
 
     """
-
     # classes used to split compounds into functional groups
-    all_classes = df_class_code_frac.classes.tolist()
-    codes = df_class_code_frac.codes.tolist()  # list of code for each class
-    mfs = df_class_code_frac.mfs.tolist()  # list of mass fraction of each class
-    classes2codes = dict(zip(all_classes, codes))  # dictionaries
-    classes2mfs = dict(zip(all_classes, mfs))  # dictionaries
     cond = True
     while cond:  # to deal with HTML issues on server sides (timeouts)
         try:
             # comp contains all info about the chemical from pubchem
-            comp_inside_list = pcp.get_compounds(comp_name, "name")
+            try:
+                comp_inside_list = pcp.get_compounds(comp_name, "name")
+            except ValueError:
+                print(f"{comp_name = }")
             if comp_inside_list:
                 comp = comp_inside_list[0]
             else:
@@ -566,6 +568,7 @@ def name_to_properties(comp_name, df, df_class_code_frac):
             cond = False
         except pcp.PubChemHTTPError:  # timeout error, simply try again
             print("Caught: pcp.PubChemHTTPError")
+
     # fill the df with the data
     if df is None:
         df = pd.DataFrame(dtype=float)
@@ -576,6 +579,7 @@ def name_to_properties(comp_name, df, df_class_code_frac):
     df.loc[comp_name, "molecular_formula"] = comp.molecular_formula
     df.loc[comp_name, "canonical_smiles"] = comp.canonical_smiles
     df.loc[comp_name, "molecular_weight"] = float(comp.molecular_weight)
+
     try:
         df.loc[comp_name, "xlogp"] = float(comp.xlogp)
     except (
@@ -594,10 +598,11 @@ def name_to_properties(comp_name, df, df_class_code_frac):
         df.loc[comp_name, "el_mf_" + el] = (
             float(el_count) * float(el_mass) / float(comp.molecular_weight)
         )
+
     # apply fragmentation using the Fragmenter class (thanks simonmb)
     frg = Fragmenter(
-        classes2codes,
-        fragmentation_scheme_order=classes2codes.keys(),
+        dict_classes_to_codes,
+        fragmentation_scheme_order=dict_classes_to_codes.keys(),
         algorithm="simple",
     )
     fragmentation, _, _ = frg.fragment(comp.canonical_smiles)
@@ -606,16 +611,25 @@ def name_to_properties(comp_name, df, df_class_code_frac):
     # df is the intermediate df for classes that helps with sums of
     # similar classes (ex. there are 27 different configs for ketones that
     # go in the same final class)
+
     newdf = pd.DataFrame(
         0, columns=classes + classes_mf, index=[comp_name], dtype=float
     )
+
+    # print(f"{df.loc[comp_name, :]}")
+    # mol_weigth = df.loc[comp_name, "molecular_weight"]
+
     for cl in classes:  # get counts and mf of each class in compound
         newdf.loc[comp_name, cl] = fragmentation[cl]  # counts in
-        newdf.loc[comp_name, "mf_" + cl] = (
-            float(fragmentation[cl])
-            * float(classes2mfs[cl])
-            / float(df.loc[comp_name, "molecular_weight"])
-        )  # mass fraction of total
+    try:
+        for cl in classes:  # get counts and mf of each class in compound
+            newdf.loc[comp_name, "mf_" + cl] = (
+                float(fragmentation[cl])
+                * float(dict_classes_to_mass_fractions[cl])
+                / df.loc[comp_name, "molecular_weight"].astype(float)
+            )  # mass fraction of total
+    except ValueError:
+        print(f"{comp_name = }")
     # classes that must be summed and considered a single one are identified
     # by the same name followed by _#. if _ is in a class, its not unique
     unique_classes = [c if "_" not in c else c.split("_")[0] for c in classes]
@@ -691,6 +705,28 @@ def name_to_properties(comp_name, df, df_class_code_frac):
     df["fg_mf_total"] = df.loc[comp_name, fg_mf_cols].sum()
     print("\tInfo: name_to_properties ", comp_name)
     return df
+
+
+def get_iupac_from_pcp(comp_name: str) -> str:
+    cond = True
+    while cond:  # to deal with HTML issues on server sides (timeouts)
+        try:
+            # comp contains all info about the chemical from pubchem
+            try:
+                comp = pcp.get_compounds(comp_name, "name")[0]
+
+            except ValueError:
+                print(f"Calibration iupac addition: compund {comp_name} did not work")
+            try:
+                iup: str = comp.iupac_name
+            except AttributeError:  # iupac_name not give
+                print(
+                    f"Calibration iupac addition: compund {comp_name} does not have a iupac entry"
+                )
+            cond = False
+        except pcp.PubChemHTTPError:  # timeout error, simply try again
+            print("Caught: pcp.PubChemHTTPError")
+    return iup.lower()
 
 
 def report_difference(rep1, rep2, diff_type="absolute"):
@@ -1596,7 +1632,13 @@ class Project:
         "fraction_of_sample_fr": "mass fraction [g/g$_{sample}$]",
         "fraction_of_feedstock_fr": "mass fraction [g/g$_{feedstock}$]",
     }
-    string_in_deriv_names = ["deriv.", "derivative", "TMS", "TBDMS", "trimethylsilyl"]
+    string_in_deriv_names: list[str] = [
+        "deriv.",
+        "derivative",
+        "TMS",
+        "TBDMS",
+        "trimethylsilyl",
+    ]
     string_in_deriv_names = [s.lower() for s in string_in_deriv_names]
     files_info_defauls_columns = [
         "dilution_factor",
@@ -1912,6 +1954,13 @@ class Project:
                     'ERROR: the file "classifications_codes_fractions.xlsx" was not found ',
                     "look in example/data for a template",
                 )
+        all_classes = self.class_code_frac.classes.tolist()
+        codes = self.class_code_frac.codes.tolist()  # list of code for each class
+        mfs = self.class_code_frac.mfs.tolist()  # list of mass fraction of each class
+        self.dict_classes_to_codes = dict(zip(all_classes, codes))  # dictionaries
+        self.dict_classes_to_mass_fractions = dict(
+            zip(all_classes, mfs)
+        )  # dictionaries
         return self.class_code_frac
 
     def load_calibrations(self):
@@ -1949,7 +1998,9 @@ class Project:
                 cal_file[cols_cal_area + cols_cal_ppms] = cal_file[
                     cols_cal_area + cols_cal_ppms
                 ].apply(pd.to_numeric, errors="coerce")
-                cal_file["iupac_name"] = "n.a."
+                if "iupac_name" not in list(cal_file):
+                    for comp in cal_file.index.tolist():
+                        cal_file.loc[comp, "iupac_name"] = get_iupac_from_pcp(comp)
                 new_cols_order = ["iupac_name"] + [
                     col for col in cal_file.columns if col != "iupac_name"
                 ]
@@ -1958,6 +2009,7 @@ class Project:
                 self.calibrations[cal_name] = cal_file
                 self.is_calibrations_deriv[cal_name] = is_cal_deriv
             self.calibrations_loaded = True
+            self.iupac_to_calibrations_added = True
             self.calibrations_not_present = False
             print("Info: load_calibrations: calibarions loaded")
         else:
@@ -1976,7 +2028,7 @@ class Project:
             self.load_all_files()
         if not self.calibrations_loaded:
             self.load_calibrations()
-        _dfs = []
+        _dfs: list[pd.DataFrame] = []
         for filename, file in self.files.items():
             if not self.is_files_deriv[filename]:
                 _dfs.append(file)
@@ -1984,11 +2036,21 @@ class Project:
             if not self.is_calibrations_deriv[filename]:
                 _dfs.append(file)
         # non-derivatized compounds
-        all_compounds = pd.concat(_dfs)
+        all_compounds: pd.DataFrame = pd.concat(_dfs)
+
         set_of_all_compounds = pd.Index(all_compounds.index.unique())
-        self.list_of_all_compounds = list(set_of_all_compounds.drop("unidentified"))
+        # Using set comprehension to remove unwanted elements
+        filtered_compounds = {
+            compound.strip()  # Remove leading/trailing spaces
+            for compound in set_of_all_compounds
+            if compound not in ["unidentified", None, False, "", " ", "''"]
+        }
+        # Converting the filtered set to a list
+        self.list_of_all_compounds = list(filtered_compounds)
         self.list_of_all_compounds_created = True
-        print("Info: create_list_of_all_compounds: list_of_all_compounds created")
+        print(
+            f"Info: create_list_of_all_compounds: list_of_all_compounds created {len(self.list_of_all_compounds) = }"
+        )
         return self.list_of_all_compounds
 
     def create_list_of_all_deriv_compounds(self):
@@ -1999,7 +2061,7 @@ class Project:
             self.load_all_files()
         if not self.calibrations_loaded:
             self.load_calibrations()
-        _dfs_deriv = []
+        _dfs_deriv: list[pd.DataFrame] = []
         for filename, file in self.files.items():
             if self.is_files_deriv[filename]:
                 _dfs_deriv.append(file)
@@ -2010,14 +2072,18 @@ class Project:
                 # need to add to calib index to match file names
                 temporary.index = temporary.index.map(lambda x: x + add_to_idx)
                 _dfs_deriv.append(temporary)
-        all_deriv_compounds = pd.concat(_dfs_deriv)
+        all_deriv_compounds: pd.DataFrame = pd.concat(_dfs_deriv)
         set_of_all_deriv_compounds = pd.Index(all_deriv_compounds.index.unique())
-        self.list_of_all_deriv_compounds = list(
-            set_of_all_deriv_compounds.drop("unidentified")
-        )
+        filtered_deriv_compounds = {
+            compound.strip()  # Remove leading/trailing spaces
+            for compound in set_of_all_deriv_compounds
+            if compound not in ["unidentified", None, False, "", " ", "''"]
+        }
+        # Converting the filtered set to a list
+        self.list_of_all_deriv_compounds = list(filtered_deriv_compounds)
         self.list_of_all_deriv_compounds_created = True
         print(
-            "Info: create_list_of_all_deriv_compounds: list_of_all_deriv_compounds created"
+            f"Info: create_list_of_all_deriv_compounds: list_of_all_deriv_compounds created {len(self.list_of_all_deriv_compounds) = }"
         )
         return self.list_of_all_deriv_compounds
 
@@ -2075,7 +2141,12 @@ class Project:
         cpdf.index.name = "comp_name"
         print("Info: create_compounds_properties: looping over names")
         for name in cpdf.index:
-            cpdf = name_to_properties(name, cpdf, self.class_code_frac)
+            cpdf = name_to_properties(
+                name,
+                cpdf,
+                self.dict_classes_to_codes,
+                self.dict_classes_to_mass_fractions,
+            )
         cpdf = self._order_columns_in_compounds_properties(cpdf)
         cpdf = cpdf.fillna(0)
         self.compounds_properties = cpdf
@@ -2097,22 +2168,32 @@ class Project:
         if not self.list_of_all_deriv_compounds_created:
             self.create_list_of_all_deriv_compounds()
 
-        unique_deriv_compounds = self.list_of_all_deriv_compounds
-        unique_underiv_compounds = [
-            ",".join(name.split(",")[:-1]) for name in unique_deriv_compounds
-        ]
-        # unique_underiv_compounds = []
-        # for name in unique_deriv_compounds:
-        #     underiv_name = ",".join(name.split(',')[:-1])
-        #     if underiv_name == '':
-        #         underiv_name = name
-        #     unique_underiv_compounds.append(underiv_name)
+        old_unique_deriv_compounds = self.list_of_all_deriv_compounds
+        # unique_underiv_compounds = [
+        #     ",".join(name.split(",")[:-1]) for name in unique_deriv_compounds
+        # ]
+        unique_deriv_compounds = []
+        unique_underiv_compounds = []
+        for name in old_unique_deriv_compounds:
+            underiv_name = ",".join(name.split(",")[:-1])
+            deriv_string = name.split(",")[-1]
+            if underiv_name == "":
+                underiv_name = name
+            else:
+                if any([der in deriv_string for der in Project.string_in_deriv_names]):
+                    unique_deriv_compounds.append(name)
+                    unique_underiv_compounds.append(underiv_name)
         dcpdf = pd.DataFrame(index=pd.Index(unique_underiv_compounds))
         dcpdf.index.name = "comp_name"
         dcpdf["deriv_comp_name"] = unique_deriv_compounds
         print("Info: create_deriv_compounds_properties: looping over names")
         for name in dcpdf.index:
-            dcpdf = name_to_properties(name, dcpdf, self.class_code_frac)
+            dcpdf = name_to_properties(
+                name,
+                dcpdf,
+                self.dict_classes_to_codes,
+                self.dict_classes_to_mass_fractions,
+            )
         # remove duplicates that may come from the "made up" name in calibration
         # dcpdf = dcpdf.drop_duplicates(subset='iupac_name')
         dcpdf["underiv_comp_name"] = dcpdf.index
@@ -2162,31 +2243,36 @@ class Project:
         ]
         return comp_df
 
-    def add_iupac_to_calibrations(self):
-        """Adds the IUPAC name to each compound in the calibration data,
-        istinguishing between underivatized and derivatized calibrations,
-        and updates the corresponding calibration dataframes."""
-        if not self.calibrations_loaded:
-            self.load_calibrations()
-        if not self.compounds_properties_created:
-            self.load_compounds_properties()
-        if self.deriv_files_present:
-            if not self.deriv_compounds_properties_created:
-                self.load_deriv_compounds_properties()
-        for calibname, calib in self.calibrations.items():
-            if not self.is_calibrations_deriv[calibname]:
-                df_comps = self.compounds_properties
-                for c in calib.index.tolist():
-                    iup = df_comps.loc[c, "iupac_name"]
-                    calib.loc[c, "iupac_name"] = iup
-            else:
-                df_comps = self.deriv_compounds_properties
-                df_comps.set_index("underiv_comp_name", inplace=True)
-                for c in calib.index.tolist():
-                    iup = df_comps.loc[c, "iupac_name"]
-                    calib.loc[c, "iupac_name"] = iup
-        self.iupac_to_calibrations_added = True
-        return self.calibrations, self.is_calibrations_deriv
+    # def add_iupac_to_calibrations(self):
+    #     """Adds the IUPAC name to each compound in the calibration data,
+    #     istinguishing between underivatized and derivatized calibrations,
+    #     and updates the corresponding calibration dataframes."""
+    #     if not self.calibrations_loaded:
+    #         self.load_calibrations()
+    #     if not self.compounds_properties_created:
+    #         self.load_compounds_properties()
+    #     if self.deriv_files_present:
+    #         if not self.deriv_compounds_properties_created:
+    #             self.load_deriv_compounds_properties()
+    #     for calibname, calib in self.calibrations.items():
+    #         if not self.is_calibrations_deriv[calibname]:
+    #             df_comps = self.compounds_properties
+    #             for c in calib.index.tolist():
+    #                 iup = df_comps.loc[c, "iupac_name"]
+    #                 calib.loc[c, "iupac_name"] = iup
+    #         else:
+    #             df_comps = self.deriv_compounds_properties
+    #             df_comps.set_index("underiv_comp_name", inplace=True)
+    #             for c in calib.index.tolist():
+    #                 iup = df_comps.loc[c, "iupac_name"]
+    #                 try:
+
+    #                     calib.loc[c, "iupac_name"] = iup
+    #                 except ValueError:
+    #                     print(f"Calibration could not set iupac value for {c}")
+
+    #     self.iupac_to_calibrations_added = True
+    #     return self.calibrations, self.is_calibrations_deriv
 
     def add_iupac_to_files(self):
         """Adds the IUPAC name to each compound in the loaded files,
@@ -2208,7 +2294,10 @@ class Project:
                 if c == "unidentified":
                     file.loc[c, "iupac_name"] = "unidentified"
                 else:
-                    iup = df_comps.loc[c, "iupac_name"]
+                    try:
+                        iup = df_comps.loc[c, "iupac_name"]
+                    except KeyError:
+                        iup = "unidentified"
                     file.loc[c, "iupac_name"] = iup
         self.iupac_to_files_added = True
         return self.files, self.is_files_deriv
@@ -2230,8 +2319,7 @@ class Project:
             return self.files, self.is_files_deriv
         if not self.iupac_to_files_added:
             _, _ = self.add_iupac_to_files()
-        if not self.iupac_to_calibrations_added:
-            _, _ = self.add_iupac_to_calibrations()
+
         for filename, _ in self.files.items():
             calibration_name = self.files_info.loc[filename, "calibration_file"]
             calibration = self.calibrations[calibration_name]
@@ -2268,7 +2356,12 @@ class Project:
             self.files[filename].index.tolist(),
             self.files[filename]["iupac_name"].tolist(),
         ):
-            if comp == "unidentified" or iupac == "unidentified":
+            if (
+                comp == "unidentified"
+                or iupac == "unidentified"
+                or comp == "n.a."
+                or iupac == "n.a."
+            ):
                 conc_mg_l = np.nan
                 comps_for_calib = "n.a."
             else:
@@ -2304,8 +2397,11 @@ class Project:
                     for c in clbrtn.index.tolist():
                         names_cal.append(c)
                         # print(df_comps.index)
-                        smis.append(cpmnds.loc[c, "canonical_smiles"])
-                        mws.append(cpmnds.loc[c, "molecular_weight"])
+                        try:
+                            smis.append(cpmnds.loc[c, "canonical_smiles"])
+                            mws.append(cpmnds.loc[c, "molecular_weight"])
+                        except KeyError:
+                            print(f"inisde calib {c = }")
                     # calculate the delta mw with all calib compounds
                     delta_mw = np.abs(np.asarray(mws)[0] - np.asarray(mws)[1:])
                     # get mols and fingerprints from rdkit for each comp
