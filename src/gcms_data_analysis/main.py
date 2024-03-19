@@ -2631,12 +2631,21 @@ class Project:
             non_num_columns = ["iupac_name", "compound_used_for_calibration"]
         else:
             non_num_columns = ["iupac_name"]
+        # Step 1: Create a comprehensive index of all unique compounds
+        all_compounds = pd.Index([])
+        for df in files_in_sample:
+            all_compounds = all_compounds.union(df.index)
+
+        # Step 2: Align all DataFrames to the comprehensive index
         aligned_dfs: list[pd.DataFrame] = [
-            df.align(files_in_sample[0], join="outer", axis=0)[0]
-            for df in files_in_sample
-        ]  # Align indices
+            df.reindex(all_compounds) for df in files_in_sample
+        ]
+        # aligned_dfs = [
+        #     df.align(files_in_sample[0], join="outer", axis=0)[0]
+        #     for df in files_in_sample
+        # ]  # Align indices
         # Fill NaN values for numerical columns after alignment and before concatenation
-        filled_dfs = [df.fillna(0) for df in aligned_dfs]
+        filled_dfs = [df.fillna(0.0) for df in aligned_dfs]
         # Keep non-numerical data separately and ensure no duplicates
         non_num_data: pd.DataFrame = pd.concat(
             [df[non_num_columns].drop_duplicates() for df in files_in_sample]
@@ -3038,8 +3047,8 @@ class Project:
         aggr: bool = False,
         min_y_thresh: float | None = None,
         only_samples_to_plot: list[str] = None,
-        rename_samples: list[str] =None,
-        reorder_samples: list[str] =None,
+        rename_samples: list[str] = None,
+        reorder_samples: list[str] = None,
         item_to_color_to_hatch: pd.DataFrame | None = None,
         paper_col=0.8,
         fig_hgt_mlt=1.5,
