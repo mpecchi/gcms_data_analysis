@@ -2635,16 +2635,17 @@ class Project:
             df.align(files_in_sample[0], join="outer", axis=0)[0]
             for df in files_in_sample
         ]  # Align indices
+        # Fill NaN values for numerical columns after alignment and before concatenation
+        filled_dfs = [df.fillna(0) for df in aligned_dfs]
         # Keep non-numerical data separately and ensure no duplicates
         non_num_data: pd.DataFrame = pd.concat(
             [df[non_num_columns].drop_duplicates() for df in files_in_sample]
         ).drop_duplicates()
-        filled_dfs: list[pd.DataFrame] = [
-            f.drop(columns=non_num_columns).fillna(0) for f in aligned_dfs
-        ]
+        # Separating numerical data to fill NaNs with zeros
+        num_data_filled = [df.drop(columns=non_num_columns) for df in filled_dfs]
         # Calculating the average and std for numerical data
-        sample = pd.concat(filled_dfs).groupby(level=0).mean().astype(float)
-        sample_std = pd.concat(filled_dfs).groupby(level=0).std().astype(float)
+        sample = pd.concat(num_data_filled).groupby(level=0).mean().astype(float)
+        sample_std = pd.concat(num_data_filled).groupby(level=0).std().astype(float)
         # Merging non-numerical data with the numerical results
         sample = sample.merge(
             non_num_data, left_index=True, right_index=True, how="left"
@@ -3031,15 +3032,15 @@ class Project:
 
     def plot_ave_std(
         self,
-        filename="plot",
-        files_or_samples="samples",
-        param="conc_vial_mg_L",
-        aggr=False,
-        min_y_thresh=None,
-        only_samples_to_plot=None,
-        rename_samples=None,
-        reorder_samples=None,
-        item_to_color_to_hatch=None,
+        filename: str = "plot",
+        files_or_samples: str = "samples",
+        param: str = "conc_vial_mg_L",
+        aggr: bool = False,
+        min_y_thresh: float | None = None,
+        only_samples_to_plot: list[str] = None,
+        rename_samples: list[str] =None,
+        reorder_samples: list[str] =None,
+        item_to_color_to_hatch: pd.DataFrame | None = None,
         paper_col=0.8,
         fig_hgt_mlt=1.5,
         xlab_rot=0,
