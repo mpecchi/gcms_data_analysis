@@ -1624,7 +1624,7 @@ class Project:
     }
 
     compounds_to_rename = {}
-    param_to_axis_label = {
+    param_to_axis_label: dict[str:str] = {
         "area": "Peak Area [-]",
         "area_if_undiluted": "Peak Area [-]",
         "conc_vial_mg_L": "conc. [mg/L] (ppm)",
@@ -1632,6 +1632,7 @@ class Project:
         "fraction_of_sample_fr": "mass fraction [g/g$_{sample}$]",
         "fraction_of_feedstock_fr": "mass fraction [g/g$_{feedstock}$]",
     }
+    acceptable_params: list[str] = list(param_to_axis_label.keys())
     string_in_deriv_names: list[str] = [
         "deriv.",
         "derivative",
@@ -2589,6 +2590,8 @@ class Project:
         self.samples_info = _samples_info.loc[:, non_numcol + numcol]
         self.samples_info_std = _samples_info_std.loc[:, non_numcol + numcol]
         self.samples_info_created = True
+        if Project.auto_save_to_excel:
+            self.save_samples_info()
         print("Info: create_samples_info: samples_info created")
         return self.samples_info, self.samples_info_std
 
@@ -2616,7 +2619,9 @@ class Project:
         self.samples_created = True
         return self.samples, self.samples_std
 
-    def _create_sample_from_files(self, files_in_sample, samplename):
+    def _create_sample_from_files(
+        self, files_in_sample: list[pd.DataFrame], samplename: str
+    ):
         """Creates a sample dataframe and a standard deviation dataframe from files
         that are replicates of the same sample. This process includes aligning dataframes,
         filling missing values, calculating averages and standard deviations,
@@ -2626,15 +2631,17 @@ class Project:
             non_num_columns = ["iupac_name", "compound_used_for_calibration"]
         else:
             non_num_columns = ["iupac_name"]
-        aligned_dfs = [
+        aligned_dfs: list[pd.DataFrame] = [
             df.align(files_in_sample[0], join="outer", axis=0)[0]
             for df in files_in_sample
         ]  # Align indices
         # Keep non-numerical data separately and ensure no duplicates
-        non_num_data = pd.concat(
+        non_num_data: pd.DataFrame = pd.concat(
             [df[non_num_columns].drop_duplicates() for df in files_in_sample]
         ).drop_duplicates()
-        filled_dfs = [f.drop(columns=non_num_columns).fillna(0) for f in aligned_dfs]
+        filled_dfs: list[pd.DataFrame] = [
+            f.drop(columns=non_num_columns).fillna(0) for f in aligned_dfs
+        ]
         # Calculating the average and std for numerical data
         sample = pd.concat(filled_dfs).groupby(level=0).mean().astype(float)
         sample_std = pd.concat(filled_dfs).groupby(level=0).std().astype(float)
@@ -2711,7 +2718,8 @@ class Project:
         This report aids in the analysis and comparison of compound
         concentrations across FILES."""
         print("Info: create_files_param_report: ", param)
-
+        if param not in Project.acceptable_params:
+            raise ValueError(f"{param = } is not an acceptable param")
         if not self.calibration_to_files_applied:
             self.apply_calibration_to_files()
         rep_columns = self.files_info.index.tolist()
@@ -2746,8 +2754,11 @@ class Project:
         group concentrations. This aggregation facilitates the understanding
         of functional group distribution across FILES."""
         print("Info: create_param_aggrrep: ", param)
+        if param not in Project.acceptable_params:
+            raise ValueError(f"{param = } is not an acceptable param")
         if param not in self.list_of_files_param_reports:
             self.create_files_param_report(param)
+
         # fg = functional groups, mf = mass fraction
         filenames = self.files_info.index.tolist()
         _all_comps = self.files_reports[param].index.tolist()
@@ -2804,6 +2815,8 @@ class Project:
         This report aids in the analysis and comparison of compound
         concentrations across SAMPLES."""
         print("Info: create_param_report: ", param)
+        if param not in Project.acceptable_params:
+            raise ValueError(f"{param = } is not an acceptable param")
         if not self.samples_created:
             self.create_samples_from_files()
         _all_comps = self.compounds_properties["iupac_name"].tolist()
@@ -2853,6 +2866,8 @@ class Project:
         group concentrations. This aggregation facilitates the understanding
         of functional group distribution across SAMPLES."""
         print("Info: create_param_aggrrep: ", param)
+        if param not in Project.acceptable_params:
+            raise ValueError(f"{param = } is not an acceptable param")
         if param not in self.list_of_samples_param_reports:
             self.create_samples_param_report(param)
         # fg = functional groups, mf = mass fraction
@@ -2942,7 +2957,8 @@ class Project:
             self.add_stats_to_samples_info()
         out_path = plib.Path(Project.out_path, "samples")
         out_path.mkdir(parents=True, exist_ok=True)
-        self.files_info.to_excel(plib.Path(out_path, "samples_info.xlsx"))
+        self.samples_info.to_excel(plib.Path(out_path, "samples_info.xlsx"))
+        self.samples_info_std.to_excel(plib.Path(out_path, "samples_info_std.xlsx"))
         print("Info: save_samples_info: samples_info saved")
 
     def save_sample(self, sample, sample_std, samplename):
