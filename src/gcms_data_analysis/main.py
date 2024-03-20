@@ -1625,6 +1625,7 @@ class Project:
 
     compounds_to_rename = {}
     param_to_axis_label: dict[str:str] = {
+        "height": "Peak Height [-]",
         "area": "Peak Area [-]",
         "area_if_undiluted": "Peak Area [-]",
         "conc_vial_mg_L": "conc. [mg/L] (ppm)",
@@ -2545,6 +2546,8 @@ class Project:
         attribute with this summarized data."""
         if not self.files_info_created:
             self.load_files_info()
+        if not self.stats_to_files_info_added:
+            self.add_stats_to_files_info()
 
         # Define numeric columns based on calibration presence
         if not self.calibrations_not_present:  # calibrations available
@@ -2559,36 +2562,40 @@ class Project:
             ]
         else:
             numeric_columns = ["height", "area", "area_if_undiluted"]
+        files_info = self.files_info.reset_index()
         max_columns = [f"max_{nc}" for nc in numeric_columns]
         total_columns = [f"total_{nc}" for nc in numeric_columns]
         all_numeric_columns = numeric_columns + max_columns + total_columns
         # Ensure these columns are in files_info before proceeding
-        numcol = [col for col in all_numeric_columns if col in self.files_info.columns]
-        files_info = self.files_info.reset_index()
+        numcol = [col for col in all_numeric_columns if col in files_info.columns]
+
         # Identify non-numeric columns
         non_numcol = [
             col
             for col in files_info.columns
             if col not in numcol and col != "samplename"
         ]
+
         # Initialize samples_info DataFrame
         # self.samples_info = pd.DataFrame(columns=self.files_info.columns)
 
         # Create an aggregation dictionary
+
         agg_dict = {
             **{nc: "mean" for nc in numcol},
             **{nnc: lambda x: list(x) for nnc in non_numcol},
         }
-
         agg_dict_std = {
             **{nc: "std" for nc in numcol},
             **{nnc: lambda x: list(x) for nnc in non_numcol},
         }
+
         # Group by 'samplename' and apply aggregation, make sure 'samplename' is not part of the aggregation
-        _samples_info = files_info.groupby("samplename").agg(agg_dict)
         _samples_info_std = files_info.groupby("samplename").agg(agg_dict_std)
-        self.samples_info = _samples_info.loc[:, non_numcol + numcol]
-        self.samples_info_std = _samples_info_std.loc[:, non_numcol + numcol]
+        _samples_info = files_info.groupby("samplename").agg(agg_dict)
+
+        self.samples_info = _samples_info[non_numcol + numcol]
+        self.samples_info_std = _samples_info_std[non_numcol + numcol]
         self.samples_info_created = True
         if Project.auto_save_to_excel:
             self.save_samples_info()
@@ -2672,55 +2679,55 @@ class Project:
 
         return sample, sample_std
 
-    def add_stats_to_samples_info(self):
-        """Generates summary statistics for each sample based on the processed files,
-        adding these statistics to the 'samples_info' DataFrame.
-        Updates the 'samples_info' with sample-specific maximum,
-        total values, and compound with maximum concentration."""
-        print("Info: add_stats_to_samples_info: started")
-        if not self.samples_created:
-            self.create_samples_from_files()
-        if not self.samples_info_created:
-            self.create_samples_info()
-        if not self.calibrations_not_present:  # calibrations available
-            numeric_columns = [
-                "height",
-                "area",
-                "area_if_undiluted",
-                "conc_vial_mg_L",
-                "conc_vial_if_undiluted_mg_L",
-                "fraction_of_sample_fr",
-                "fraction_of_feedstock_fr",
-            ]
-        else:
-            numeric_columns = ["height", "area", "area_if_undiluted"]
-        max_columns = [f"max_{nc}" for nc in numeric_columns]
-        total_columns = [f"total_{nc}" for nc in numeric_columns]
-        for name, df in self.samples.items():
-            for ncol, mcol, tcol in zip(numeric_columns, max_columns, total_columns):
-                self.samples_info.loc[name, mcol] = df[ncol].max()
-                self.samples_info.loc[name, tcol] = df[ncol].sum()
-        for name, df in self.samples.items():
-            self.samples_info.loc[name, "compound_with_max_area"] = df[
-                df["area"] == df["area"].max()
-            ].index[0]
-            if not self.calibrations_not_present:
-                self.samples_info.loc[name, "compound_with_max_conc"] = df[
-                    df["conc_vial_mg_L"]
-                    == self.samples_info.loc[name, "max_conc_vial_mg_L"]
-                ].index[0]
-        # convert max and total columns to float
-        for col in max_columns + total_columns:
-            if col in self.samples_info.columns:
-                try:
-                    self.samples_info[col] = self.samples_info[col].astype(float)
-                except ValueError:
-                    print(self.samples_info[col])
-        self.stats_to_samples_info_added = True
-        if Project.auto_save_to_excel:
-            self.save_samples_info()
-        self.stats_to_samples_info_added = True
-        return self.samples_info
+    # def add_stats_to_samples_info(self):
+    #     """Generates summary statistics for each sample based on the processed files,
+    #     adding these statistics to the 'samples_info' DataFrame.
+    #     Updates the 'samples_info' with sample-specific maximum,
+    #     total values, and compound with maximum concentration."""
+    #     print("Info: add_stats_to_samples_info: started")
+    #     if not self.samples_created:
+    #         self.create_samples_from_files()
+    #     if not self.samples_info_created:
+    #         self.create_samples_info()
+    #     if not self.calibrations_not_present:  # calibrations available
+    #         numeric_columns = [
+    #             "height",
+    #             "area",
+    #             "area_if_undiluted",
+    #             "conc_vial_mg_L",
+    #             "conc_vial_if_undiluted_mg_L",
+    #             "fraction_of_sample_fr",
+    #             "fraction_of_feedstock_fr",
+    #         ]
+    #     else:
+    #         numeric_columns = ["height", "area", "area_if_undiluted"]
+    #     max_columns = [f"max_{nc}" for nc in numeric_columns]
+    #     total_columns = [f"total_{nc}" for nc in numeric_columns]
+    #     for name, df in self.samples.items():
+    #         for ncol, mcol, tcol in zip(numeric_columns, max_columns, total_columns):
+    #             self.samples_info.loc[name, mcol] = df[ncol].max()
+    #             self.samples_info.loc[name, tcol] = df[ncol].sum()
+    #     for name, df in self.samples.items():
+    #         self.samples_info.loc[name, "compound_with_max_area"] = df[
+    #             df["area"] == df["area"].max()
+    #         ].index[0]
+    #         if not self.calibrations_not_present:
+    #             self.samples_info.loc[name, "compound_with_max_conc"] = df[
+    #                 df["conc_vial_mg_L"]
+    #                 == self.samples_info.loc[name, "max_conc_vial_mg_L"]
+    #             ].index[0]
+    #     # convert max and total columns to float
+    #     for col in max_columns + total_columns:
+    #         if col in self.samples_info.columns:
+    #             try:
+    #                 self.samples_info[col] = self.samples_info[col].astype(float)
+    #             except ValueError:
+    #                 print(self.samples_info[col])
+    #     self.stats_to_samples_info_added = True
+    #     if Project.auto_save_to_excel:
+    #         self.save_samples_info()
+    #     self.stats_to_samples_info_added = True
+    #     return self.samples_info
 
     def create_files_param_report(self, param="conc_vial_mg_L"):
         """Creates a detailed report for each parameter across all FILES,
@@ -2963,8 +2970,8 @@ class Project:
         """Saves the 'samples_info' DataFrame as an Excel file in a 'samples'
         subfolder within the project's output path, after ensuring that sample
         statistics have been added, providing a summarized view of sample data."""
-        if not self.stats_to_samples_info_added:
-            self.add_stats_to_samples_info()
+        if not self.samples_info_created:
+            self.create_samples_info()
         out_path = plib.Path(Project.out_path, "samples")
         out_path.mkdir(parents=True, exist_ok=True)
         self.samples_info.to_excel(plib.Path(out_path, "samples_info.xlsx"))

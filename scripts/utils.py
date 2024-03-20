@@ -3,16 +3,19 @@ import pathlib as plib
 import pandas as pd
 import numpy as np
 from pandas.testing import assert_frame_equal
+from collections.abc import Iterable
 
 # example_data_path = plib.Path(plib.Path(__file__).parent.parent,
 #     'example/data/')
-example_data_path = r"C:\Users\mp933\OneDrive - Cornell University\Python\gcms_data_analysis\example\data"
+example_data_path = r"C:\Users\mp933\OneDrive - Cornell University\Python\gcms_data_analysis\tests\data_for_testing"
 Project.set_folder_path(example_data_path)
 gcms = Project()
-#%%
-def print_checked_df_to_script_text(df):
+
+
+# %%
+def print_checked_df_to_script_text_with_arrays(df):
     # Convert the DataFrame to a dictionary with 'list' orientation
-    df_dict = df.to_dict(orient='list')
+    df_dict = df.to_dict(orient="list")
 
     # Convert the index to a list and get the index name
     index_list = df.index.tolist()
@@ -28,16 +31,25 @@ def print_checked_df_to_script_text(df):
 
     # Start printing the data dictionary
     print("    data={")
-    # Print each column's data
+    # Iterate over each column and its values
     for key, values in df_dict.items():
-        # Replace NaN values with np.nan for printing
-        values_with_nan = [f"np.nan" if pd.isnull(value) else value for value in values]
-        # Prepare the string representation of the list, handling np.nan specially
-        values_str = str(values_with_nan).replace("'np.nan'", "np.nan")
+        # Initialize a list to hold the processed values for each column
+        processed_values = []
+        for value in values:
+            # Check if the value is an iterable (not a string) and convert to tuple
+            if isinstance(value, Iterable) and not isinstance(value, str):
+                processed_value = f"({', '.join(repr(v) for v in value)})"
+            elif pd.isnull(value):
+                # Handle NaN values
+                processed_value = "np.nan"
+            else:
+                # Direct representation for other types
+                processed_value = repr(value)
+            processed_values.append(processed_value)
 
+        # Join the processed values into a string representing a list or tuple
+        values_str = f"[{', '.join(processed_values)}]"
         print(f"        '{key}': {values_str},")
-    # Close the data dictionary
+    # Close the data dictionary and DataFrame construction
     print("    }")
-    # Close the DataFrame construction
     print(")")
-#%%

@@ -5,12 +5,18 @@ import pytest
 import rdkit
 from gcms_data_analysis.main import Project
 
+
 @pytest.fixture
-def gcms():
-    folder_path = plib.Path(plib.Path(__file__).parent.parent, 'tests/data_for_testing/')
+def gcms() -> Project:
+
+    folder_path: plib.Path = plib.Path(
+        plib.Path(__file__).parent.parent, "tests/data_for_testing/"
+    )
     Project.set_folder_path(folder_path)
     return Project()
 
+
+# fmt: off
 @pytest.fixture
 def checked_files_info():
     files_info = pd.DataFrame(
@@ -448,74 +454,114 @@ def checked_files_info_added_stats():
     )
     return files_info
 
+
 @pytest.fixture
 def checked_samples_info():
     samples_info = pd.DataFrame(
         index=pd.Index(['A', 'Ader', 'B'], name='samplename'),
         data={
-            'filename': [['A_1', 'A_2'], ['Ader_1', 'Ader_2'], ['B_1', 'B_2']],
-            'derivatized': [[False, False], [True, True], [False, False]],
-            'dilution_factor': [[25, 25], [125, 125], [1, 1]],
-            'total_sample_conc_in_vial_mg_L': [[560.0000000000001, 560.0000000000001], [112.0, 112.0], [2800.0, 2800.0]],
-            'sample_yield_on_feedstock_basis_fr': [[0.45, 0.46], [0.47, 0.48], [0.49, 0.5]],
-            'calibration_file': [['calibration', 'calibration'], ['deriv_calibration', 'deriv_calibration'], ['calibration', 'calibration']],
+            'filename': [('A_1', 'A_2'), ('Ader_1', 'Ader_2'), ('B_1', 'B_2')],
+            'derivatized': [(False, False), (True, True), (False, False)],
+            'dilution_factor': [(25, 25), (125, 125), (1, 1)],
+            'total_sample_conc_in_vial_mg_L': [(560.0000000000001, 560.0000000000001), (112.0, 112.0), (2800.0, 2800.0)],
+            'sample_yield_on_feedstock_basis_fr': [(0.45, 0.46), (0.47, 0.48), (0.49, 0.5)],
+            'calibration_file': [('calibration', 'calibration'), ('deriv_calibration', 'deriv_calibration'), ('calibration', 'calibration')],
+            'compound_with_max_area': [('oleic acid', 'oleic acid'), ('9-octadecenoic acid, (z)-, tms derivative', '9-octadecenoic acid, (z)-, tms derivative'), ('2,5-hexanedione', '2,5-hexanedione')],
+            'compound_with_max_conc': [('9,12-octadecadienoic acid (z,z)-', '9,12-octadecadienoic acid (z,z)-'), ('9,12-octadecadienoic acid (z,z)-, tms derivative', '9,12-octadecadienoic acid (z,z)-, tms derivative'), ('phenol', 'phenol')],
+            'max_height': [1143123.0, 548218.5, 116469.5],
+            'max_area': [6387230.0, 1840687.0, 456719.5],
+            'max_area_if_undiluted': [159680750.0, 230085875.0, 456719.5],
+            'max_conc_vial_mg_L': [128.28438972770587, 34.090377368664285, 7.526085990440194],
+            'max_conc_vial_if_undiluted_mg_L': [3207.1097431926473, 4261.297171083035, 7.526085990440194],
+            'max_fraction_of_sample_fr': [0.2290792673709033, 0.304378369363074, 0.0026878878537286406],
+            'max_fraction_of_feedstock_fr': [0.10420514155783843, 0.1447012705450368, 0.00133114530090798],
+            'total_height': [2001498.5, 1271114.0, 263429.0],
+            'total_area': [9663908.0, 3905876.5, 950583.0],
+            'total_area_if_undiluted': [241597700.0, 488234562.5, 950583.0],
+            'total_conc_vial_mg_L': [340.6411164089501, 87.78908432611982, 13.71532827405969],
+            'total_conc_vial_if_undiluted_mg_L': [8516.027910223755, 10973.635540764979, 13.71532827405969],
+            'total_fraction_of_sample_fr': [0.608287707873125, 0.7838311100546413, 0.0048983315264498895],
+            'total_fraction_of_feedstock_fr': [0.27682625306711833, 0.3724952251077016, 0.002425217492902904],
         }
     )
     return samples_info
+
+@pytest.fixture
+def checked_samples_info_std():
+    samples_info_std = pd.DataFrame(
+    index=pd.Index(['A', 'Ader', 'B'], name='samplename'),
+        data={
+            'filename': [('A_1', 'A_2'), ('Ader_1', 'Ader_2'), ('B_1', 'B_2')],
+            'derivatized': [(False, False), (True, True), (False, False)],
+            'dilution_factor': [(25, 25), (125, 125), (1, 1)],
+            'total_sample_conc_in_vial_mg_L': [(560.0000000000001, 560.0000000000001), (112.0, 112.0), (2800.0, 2800.0)],
+            'sample_yield_on_feedstock_basis_fr': [(0.45, 0.46), (0.47, 0.48), (0.49, 0.5)],
+            'calibration_file': [('calibration', 'calibration'), ('deriv_calibration', 'deriv_calibration'), ('calibration', 'calibration')],
+            'compound_with_max_area': [('oleic acid', 'oleic acid'), ('9-octadecenoic acid, (z)-, tms derivative', '9-octadecenoic acid, (z)-, tms derivative'), ('2,5-hexanedione', '2,5-hexanedione')],
+            'compound_with_max_conc': [('9,12-octadecadienoic acid (z,z)-', '9,12-octadecadienoic acid (z,z)-'), ('9,12-octadecadienoic acid (z,z)-, tms derivative', '9,12-octadecadienoic acid (z,z)-, tms derivative'), ('phenol', 'phenol')],
+            'max_height': [6330.019905181974, 65717.79713669654, 5193.699307815192],
+            'max_area': [10575.489019426004, 163869.16811285765, 22121.83564942114],
+            'max_area_if_undiluted': [264387.2254856501, 20483646.014107205, 22121.83564942114],
+            'max_conc_vial_mg_L': [4.106325693068217, 3.8503522496954825, 0.5074982512365029],
+            'max_conc_vial_if_undiluted_mg_L': [102.65814232670576, 481.29403121193536, 0.5074982512365029],
+            'max_fraction_of_sample_fr': [0.007332724451907525, 0.03437814508656681, 0.00018124937544160814],
+            'max_fraction_of_feedstock_fr': [0.001716554591745799, 0.01848189900635057, 0.00010872467812800095],
+            'total_height': [35334.83296267297, 88567.95277073982, 12695.395149423275],
+            'total_area': [188070.60480574841, 215433.51591732426, 45073.814659955286],
+            'total_area_if_undiluted': [4701765.120143711, 26929189.48966553, 45073.814659955286],
+            'total_conc_vial_mg_L': [8.766356747981709, 5.557903750459465, 0.4303407940826049],
+            'total_conc_vial_if_undiluted_mg_L': [219.1589186995424, 694.7379688074318, 0.4303407940826049],
+            'total_fraction_of_sample_fr': [0.015654208478538812, 0.049624140629102274, 0.00015369314074378663],
+            'total_fraction_of_feedstock_fr': [0.011423908489230281, 0.029113989731069757, 0.00011071453905670015],
+        }
+    )
+    return samples_info_std
 
 @pytest.fixture
 def checked_samples_info_no_calibrations():
     samples_info = pd.DataFrame(
-        index=pd.Index(['A', 'Ader', 'B'], name='samplename'),
-        data={
-            'filename': [['A_1', 'A_2'], ['Ader_1', 'Ader_2'], ['B_1', 'B_2']],
-            'replicate_number': [['1', '2'], ['1', '2'], ['1', '2']],
-            'derivatized': [[False, False], [False, False], [False, False]],
-            'calibration_file': [[False, False], [False, False], [False, False]],
-            'dilution_factor': [[1, 1], [1, 1], [1, 1]],
-            'total_sample_conc_in_vial_mg_L': [[1, 1], [1, 1], [1, 1]],
-            'sample_yield_on_feedstock_basis_fr': [[1, 1], [1, 1], [1, 1]],
-            'compound_with_max_area': ['oleic acid', '9-octadecenoic acid, (z)-, tms derivative', '2,5-hexanedione'],
-            'max_height': [1143123.0, 548218.5, 116469.5],
-            'max_area': [6387230.0, 1840687.0, 456719.5],
-            'max_area_if_undiluted': [6387230.0, 1840687.0, 456719.5],
-            'total_height': [2003628.0, 1271114.0, 263429.0],
-            'total_area': [9669384.0, 3905876.5, 950583.0],
-            'total_area_if_undiluted': [9669384.0, 3905876.5, 950583.0],
-        }
-    )
-    return samples_info
-
-@pytest.fixture
-def checked_samples_info_applied_calibration():
-    samples_info = pd.DataFrame(
     index=pd.Index(['A', 'Ader', 'B'], name='samplename'),
     data={
-        'filename': [['A_1', 'A_2'], ['Ader_1', 'Ader_2'], ['B_1', 'B_2']],
-        'derivatized': [[False, False], [True, True], [False, False]],
-        'dilution_factor': [[25, 25], [125, 125], [1, 1]],
-        'total_sample_conc_in_vial_mg_L': [[560.0000000000001, 560.0000000000001], [112.0, 112.0], [2800.0, 2800.0]],
-        'sample_yield_on_feedstock_basis_fr': [[0.45, 0.46], [0.47, 0.48], [0.49, 0.5]],
-        'calibration_file': [['calibration', 'calibration'], ['deriv_calibration', 'deriv_calibration'], ['calibration', 'calibration']],
-        'compound_with_max_area': ['oleic acid', '9-octadecenoic acid, (z)-, tms derivative', '2,5-hexanedione'],
-        'compound_with_max_conc': ['9,12-octadecadienoic acid (z,z)-', '9,12-octadecadienoic acid (z,z)-, tms derivative', 'phenol'],
+        'filename': [('A_1', 'A_2'), ('Ader_1', 'Ader_2'), ('B_1', 'B_2')],
+        'replicate_number': [('1', '2'), ('1', '2'), ('1', '2')],
+        'derivatized': [(False, False), (False, False), (False, False)],
+        'calibration_file': [(False, False), (False, False), (False, False)],
+        'dilution_factor': [(1, 1), (1, 1), (1, 1)],
+        'total_sample_conc_in_vial_mg_L': [(1, 1), (1, 1), (1, 1)],
+        'sample_yield_on_feedstock_basis_fr': [(1, 1), (1, 1), (1, 1)],
+        'compound_with_max_area': [('oleic acid', 'oleic acid'), ('9-octadecenoic acid, (z)-, tms derivative', '9-octadecenoic acid, (z)-, tms derivative'), ('2,5-hexanedione', '2,5-hexanedione')],
         'max_height': [1143123.0, 548218.5, 116469.5],
         'max_area': [6387230.0, 1840687.0, 456719.5],
-        'max_area_if_undiluted': [159680750.0, 230085875.0, 456719.5],
-        'max_conc_vial_mg_L': [128.28438972770587, 34.090377368664285, 7.526085990440194],
-        'max_conc_vial_if_undiluted_mg_L': [3207.1097431926473, 4261.297171083035, 7.526085990440194],
-        'max_fraction_of_sample_fr': [0.2290792673709033, 0.304378369363074, 0.0026878878537286406],
-        'max_fraction_of_feedstock_fr': [0.10420514155783843, 0.1447012705450368, 0.00133114530090798],
-        'total_height': [2003628.0, 1271114.0, 263429.0],
-        'total_area': [9669384.0, 3905876.5, 950583.0],
-        'total_area_if_undiluted': [241734600.0, 488234562.5, 950583.0],
-        'total_conc_vial_mg_L': [352.0332553342043, 87.78908432611982, 13.715328274059692],
-        'total_conc_vial_if_undiluted_mg_L': [8800.831383355107, 10973.635540764979, 13.715328274059692],
-        'total_fraction_of_sample_fr': [0.6286308130967933, 0.7838311100546413, 0.0048983315264498895],
-        'total_fraction_of_feedstock_fr': [0.28618408147000574, 0.3724952251077016, 0.0024252174929029046],
+        'max_area_if_undiluted': [6387230.0, 1840687.0, 456719.5],
+        'total_height': [2001498.5, 1271114.0, 263429.0],
+        'total_area': [9663908.0, 3905876.5, 950583.0],
+        'total_area_if_undiluted': [9663908.0, 3905876.5, 950583.0],
     }
 )
     return samples_info
+
+@pytest.fixture
+def checked_samples_info_no_calibrations_std():
+    samples_info_std = pd.DataFrame(
+    index=pd.Index(['A', 'Ader', 'B'], name='samplename'),
+    data={
+        'filename': [('A_1', 'A_2'), ('Ader_1', 'Ader_2'), ('B_1', 'B_2')],
+        'replicate_number': [('1', '2'), ('1', '2'), ('1', '2')],
+        'derivatized': [(False, False), (False, False), (False, False)],
+        'calibration_file': [(False, False), (False, False), (False, False)],
+        'dilution_factor': [(1, 1), (1, 1), (1, 1)],
+        'total_sample_conc_in_vial_mg_L': [(1, 1), (1, 1), (1, 1)],
+        'sample_yield_on_feedstock_basis_fr': [(1, 1), (1, 1), (1, 1)],
+        'compound_with_max_area': [('oleic acid', 'oleic acid'), ('9-octadecenoic acid, (z)-, tms derivative', '9-octadecenoic acid, (z)-, tms derivative'), ('2,5-hexanedione', '2,5-hexanedione')],
+        'max_height': [6330.019905181974, 65717.79713669654, 5193.699307815192],
+        'max_area': [10575.489019426004, 163869.16811285765, 22121.83564942114],
+        'max_area_if_undiluted': [10575.489019426004, 163869.16811285765, 22121.83564942114],
+        'total_height': [35334.83296267297, 88567.95277073982, 12695.395149423275],
+        'total_area': [188070.60480574841, 215433.51591732426, 45073.814659955286],
+        'total_area_if_undiluted': [188070.60480574841, 215433.51591732426, 45073.814659955286],
+    }
+)
+    return samples_info_std
 
 
 @pytest.fixture
@@ -794,58 +840,58 @@ def checked_files_param_aggrreps():
 def checked_samples_param_reports():
     reports = {
         'height': pd.DataFrame(
-            index=pd.Index(['(z)-octadec-9-enoic acid', 'hexadecanoic acid', '(9z,12z)-octadeca-9,12-dienoic acid', 'hexane-2,5-dione', 'phenol', 'butan-2-one', '2-methylcyclopent-2-en-1-one', 'tetradecanoic acid', '(e)-pent-2-enoic acid', '(e)-hexadec-9-enoic acid', 'oxacycloheptadecan-2-one', 'decanoic acid', '4,5-dimethylhex-1-ene'], name='height'),
+            index=pd.Index(['(z)-octadec-9-enoic acid', 'hexadecanoic acid', '(9z,12z)-octadeca-9,12-dienoic acid', 'hexane-2,5-dione', 'phenol', 'butan-2-one', '2-methylcyclopent-2-en-1-one', 'tetradecanoic acid', '(e)-pent-2-enoic acid', '(e)-hexadec-9-enoic acid', 'oxacycloheptadecan-2-one', '4,5-dimethylhex-1-ene', 'decanoic acid'], name='height'),
             data={
-                'A': [1143123.0, 477850.5, 332147.5, 0.0, 0.0, 0.0, 0.0, 14769.5, 0.0, 0.0, 6222.0, 4259.0, 0.0],
+                'A': [1143123.0, 477850.5, 332147.5, 0.0, 0.0, 0.0, 0.0, 14769.5, 0.0, 0.0, 6222.0, 0.0, 2129.5],
                 'Ader': [548218.5, 490697.0, 191724.5, 0.0, 0.0, 0.0, 0.0, 18394.0, 0.0, 8953.5, 0.0, 0.0, 0.0],
-                'B': [0.0, 0.0, 0.0, 116469.5, 69787.0, 41972.0, 19169.0, 0.0, 12434.5, 0.0, 0.0, 0.0, 3597.0],
+                'B': [0.0, 0.0, 0.0, 116469.5, 69787.0, 41972.0, 19169.0, 0.0, 12434.5, 0.0, 0.0, 3597.0, 0.0],
             }
         ),
         'area': pd.DataFrame(
-            index=pd.Index(['(z)-octadec-9-enoic acid', 'hexadecanoic acid', '(9z,12z)-octadeca-9,12-dienoic acid', 'hexane-2,5-dione', 'phenol', 'butan-2-one', '2-methylcyclopent-2-en-1-one', 'tetradecanoic acid', '(e)-pent-2-enoic acid', '(e)-hexadec-9-enoic acid', 'oxacycloheptadecan-2-one', 'decanoic acid', '4,5-dimethylhex-1-ene'], name='area'),
+            index=pd.Index(['(z)-octadec-9-enoic acid', 'hexadecanoic acid', '(9z,12z)-octadeca-9,12-dienoic acid', 'hexane-2,5-dione', 'phenol', 'butan-2-one', '2-methylcyclopent-2-en-1-one', 'tetradecanoic acid', '(e)-pent-2-enoic acid', '(e)-hexadec-9-enoic acid', 'oxacycloheptadecan-2-one', '4,5-dimethylhex-1-ene', 'decanoic acid'], name='area'),
             data={
-                'A': [6387230.0, 1767468.0, 1413594.0, 0.0, 0.0, 0.0, 0.0, 47519.5, 0.0, 0.0, 18181.0, 10952.0, 0.0],
+                'A': [6387230.0, 1767468.0, 1413594.0, 0.0, 0.0, 0.0, 0.0, 47519.5, 0.0, 0.0, 18181.0, 0.0, 5476.0],
                 'Ader': [1840687.0, 1409097.5, 562306.5, 0.0, 0.0, 0.0, 0.0, 51560.5, 0.0, 26505.5, 0.0, 0.0, 0.0],
-                'B': [0.0, 0.0, 0.0, 456719.5, 214848.5, 164293.5, 66877.0, 0.0, 38083.5, 0.0, 0.0, 0.0, 9761.0],
+                'B': [0.0, 0.0, 0.0, 456719.5, 214848.5, 164293.5, 66877.0, 0.0, 38083.5, 0.0, 0.0, 9761.0, 0.0],
             }
         ),
         'area_if_undiluted': pd.DataFrame(
-            index=pd.Index(['(z)-octadec-9-enoic acid', 'hexadecanoic acid', '(9z,12z)-octadeca-9,12-dienoic acid', 'tetradecanoic acid', '(e)-hexadec-9-enoic acid', 'hexane-2,5-dione', 'oxacycloheptadecan-2-one', 'decanoic acid', 'phenol', 'butan-2-one', '2-methylcyclopent-2-en-1-one', '(e)-pent-2-enoic acid', '4,5-dimethylhex-1-ene'], name='area_if_undiluted'),
+            index=pd.Index(['(z)-octadec-9-enoic acid', 'hexadecanoic acid', '(9z,12z)-octadeca-9,12-dienoic acid', 'tetradecanoic acid', '(e)-hexadec-9-enoic acid', 'hexane-2,5-dione', 'oxacycloheptadecan-2-one', 'phenol', 'butan-2-one', 'decanoic acid', '2-methylcyclopent-2-en-1-one', '(e)-pent-2-enoic acid', '4,5-dimethylhex-1-ene'], name='area_if_undiluted'),
             data={
-                'A': [159680750.0, 44186700.0, 35339850.0, 1187987.5, 0.0, 0.0, 454525.0, 273800.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                'A': [159680750.0, 44186700.0, 35339850.0, 1187987.5, 0.0, 0.0, 454525.0, 0.0, 0.0, 136900.0, 0.0, 0.0, 0.0],
                 'Ader': [230085875.0, 176137187.5, 70288312.5, 6445062.5, 3313187.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                'B': [0.0, 0.0, 0.0, 0.0, 0.0, 456719.5, 0.0, 0.0, 214848.5, 164293.5, 66877.0, 38083.5, 9761.0],
+                'B': [0.0, 0.0, 0.0, 0.0, 0.0, 456719.5, 0.0, 214848.5, 164293.5, 0.0, 66877.0, 38083.5, 9761.0],
             }
         ),
         'conc_vial_mg_L': pd.DataFrame(
             index=pd.Index(['(9z,12z)-octadeca-9,12-dienoic acid', '(z)-octadec-9-enoic acid', 'hexadecanoic acid', 'tetradecanoic acid', 'decanoic acid', 'phenol', '2-methylcyclopent-2-en-1-one', '(e)-hexadec-9-enoic acid'], name='conc_vial_mg_L'),
             data={
-                'A': [128.28438972770587, 113.72290046495935, 63.58554431387759, 23.65614297715311, 22.78427785050836, 0.0, 0.0, 0.0],
+                'A': [128.28438972770587, 113.72290046495935, 63.58554431387759, 23.65614297715311, 11.39213892525418, 0.0, 0.0, 0.0],
                 'Ader': [34.090377368664285, 22.971264852335217, 27.502344287695024, 0.6415947958834178, 0.0, 0.0, 0.0, 2.5835030215418877],
                 'B': [0.0, 0.0, 0.0, 0.0, 0.0, 7.526085990440194, 6.189242283619498, 0.0],
             }
         ),
         'conc_vial_if_undiluted_mg_L': pd.DataFrame(
-            index=pd.Index(['(9z,12z)-octadeca-9,12-dienoic acid', 'hexadecanoic acid', '(z)-octadec-9-enoic acid', 'tetradecanoic acid', 'decanoic acid', '(e)-hexadec-9-enoic acid', 'phenol', '2-methylcyclopent-2-en-1-one'], name='conc_vial_if_undiluted_mg_L'),
+            index=pd.Index(['(9z,12z)-octadeca-9,12-dienoic acid', 'hexadecanoic acid', '(z)-octadec-9-enoic acid', 'tetradecanoic acid', '(e)-hexadec-9-enoic acid', 'decanoic acid', 'phenol', '2-methylcyclopent-2-en-1-one'], name='conc_vial_if_undiluted_mg_L'),
             data={
-                'A': [3207.1097431926473, 1589.6386078469395, 2843.0725116239837, 591.4035744288278, 569.606946262709, 0.0, 0.0, 0.0],
-                'Ader': [4261.297171083035, 3437.7930359618776, 2871.4081065419023, 80.19934948542723, 0.0, 322.9378776927359, 0.0, 0.0],
+                'A': [3207.1097431926473, 1589.6386078469395, 2843.0725116239837, 591.4035744288278, 0.0, 284.8034731313545, 0.0, 0.0],
+                'Ader': [4261.297171083035, 3437.7930359618776, 2871.4081065419023, 80.19934948542723, 322.9378776927359, 0.0, 0.0, 0.0],
                 'B': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 7.526085990440194, 6.189242283619498],
             }
         ),
         'fraction_of_sample_fr': pd.DataFrame(
-            index=pd.Index(['(9z,12z)-octadeca-9,12-dienoic acid', 'hexadecanoic acid', '(z)-octadec-9-enoic acid', 'tetradecanoic acid', 'decanoic acid', '(e)-hexadec-9-enoic acid', 'phenol', '2-methylcyclopent-2-en-1-one'], name='fraction_of_sample_fr'),
+            index=pd.Index(['(9z,12z)-octadeca-9,12-dienoic acid', 'hexadecanoic acid', '(z)-octadec-9-enoic acid', 'tetradecanoic acid', '(e)-hexadec-9-enoic acid', 'decanoic acid', 'phenol', '2-methylcyclopent-2-en-1-one'], name='fraction_of_sample_fr'),
             data={
-                'A': [0.2290792673709033, 0.11354561484620995, 0.20307660797314164, 0.042243112459201974, 0.04068621044733635, 0.0, 0.0, 0.0],
-                'Ader': [0.304378369363074, 0.24555664542584843, 0.2051005790387073, 0.005728524963244802, 0.0, 0.023066991263766854, 0.0, 0.0],
+                'A': [0.2290792673709033, 0.11354561484620995, 0.20307660797314164, 0.042243112459201974, 0.0, 0.020343105223668174, 0.0, 0.0],
+                'Ader': [0.304378369363074, 0.24555664542584843, 0.2051005790387073, 0.005728524963244802, 0.023066991263766854, 0.0, 0.0, 0.0],
                 'B': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0026878878537286406, 0.0022104436727212492],
             }
         ),
         'fraction_of_feedstock_fr': pd.DataFrame(
-            index=pd.Index(['(9z,12z)-octadeca-9,12-dienoic acid', 'hexadecanoic acid', '(z)-octadec-9-enoic acid', 'tetradecanoic acid', 'decanoic acid', '(e)-hexadec-9-enoic acid', 'phenol', '2-methylcyclopent-2-en-1-one'], name='fraction_of_feedstock_fr'),
+            index=pd.Index(['(9z,12z)-octadeca-9,12-dienoic acid', 'hexadecanoic acid', '(z)-octadec-9-enoic acid', 'tetradecanoic acid', '(e)-hexadec-9-enoic acid', 'decanoic acid', 'phenol', '2-methylcyclopent-2-en-1-one'], name='fraction_of_feedstock_fr'),
             data={
-                'A': [0.10420514155783843, 0.051641211741918436, 0.0924007887729286, 0.01922128259154552, 0.018715656805774722, 0.0, 0.0, 0.0],
-                'Ader': [0.1447012705450368, 0.11663401169579143, 0.09748090808552162, 0.002722862373382652, 0.0, 0.010956172407969126, 0.0, 0.0],
+                'A': [0.10420514155783843, 0.051641211741918436, 0.0924007887729286, 0.01922128259154552, 0.0, 0.009357828402887361, 0.0, 0.0],
+                'Ader': [0.1447012705450368, 0.11663401169579143, 0.09748090808552162, 0.002722862373382652, 0.010956172407969126, 0.0, 0.0, 0.0],
                 'B': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.00133114530090798, 0.0010940721919949245],
             }
         )
@@ -856,58 +902,58 @@ def checked_samples_param_reports():
 def checked_samples_param_reports_std():
     reports = {
         'height': pd.DataFrame(
-            index=pd.Index(['(z)-octadec-9-enoic acid', 'hexadecanoic acid', '(9z,12z)-octadeca-9,12-dienoic acid', 'hexane-2,5-dione', 'phenol', 'butan-2-one', '2-methylcyclopent-2-en-1-one', 'tetradecanoic acid', '(e)-pent-2-enoic acid', '(e)-hexadec-9-enoic acid', 'oxacycloheptadecan-2-one', 'decanoic acid', '4,5-dimethylhex-1-ene'], name='height'),
+            index=pd.Index(['(z)-octadec-9-enoic acid', 'hexadecanoic acid', '(9z,12z)-octadeca-9,12-dienoic acid', 'hexane-2,5-dione', 'phenol', 'butan-2-one', '2-methylcyclopent-2-en-1-one', 'tetradecanoic acid', '(e)-pent-2-enoic acid', '(e)-hexadec-9-enoic acid', 'oxacycloheptadecan-2-one', '4,5-dimethylhex-1-ene', 'decanoic acid'], name='height'),
             data={
-                'A': [6330.019905181974, 22498.01645701238, 10546.497641397356, np.nan, np.nan, np.nan, np.nan, 352.8462838120872, np.nan, np.nan, 731.1484117468901, np.nan, np.nan],
+                'A': [6330.019905181974, 22498.01645701238, 10546.497641397356, np.nan, np.nan, np.nan, np.nan, 352.8462838120872, np.nan, np.nan, 731.1484117468901, np.nan, 3011.567781073506],
                 'Ader': [65717.79713669654, 8212.338156700564, 15378.865384026221, np.nan, np.nan, np.nan, np.nan, 29.698484809834994, np.nan, 252.43712088359746, np.nan, np.nan, np.nan],
-                'B': [np.nan, np.nan, np.nan, 5193.699307815192, 7588.669975694028, 3647.2567773602123, 924.8956697920041, np.nan, 427.79960261786124, np.nan, np.nan, np.nan, 5086.926183856023],
+                'B': [np.nan, np.nan, np.nan, 5193.699307815192, 7588.669975694028, 3647.2567773602123, 924.8956697920041, np.nan, 427.79960261786124, np.nan, np.nan, 5086.926183856023, np.nan],
             }
         ),
         'area': pd.DataFrame(
-            index=pd.Index(['(z)-octadec-9-enoic acid', 'hexadecanoic acid', '(9z,12z)-octadeca-9,12-dienoic acid', 'hexane-2,5-dione', 'phenol', 'butan-2-one', '2-methylcyclopent-2-en-1-one', 'tetradecanoic acid', '(e)-pent-2-enoic acid', '(e)-hexadec-9-enoic acid', 'oxacycloheptadecan-2-one', 'decanoic acid', '4,5-dimethylhex-1-ene'], name='area'),
+            index=pd.Index(['(z)-octadec-9-enoic acid', 'hexadecanoic acid', '(9z,12z)-octadeca-9,12-dienoic acid', 'hexane-2,5-dione', 'phenol', 'butan-2-one', '2-methylcyclopent-2-en-1-one', 'tetradecanoic acid', '(e)-pent-2-enoic acid', '(e)-hexadec-9-enoic acid', 'oxacycloheptadecan-2-one', '4,5-dimethylhex-1-ene', 'decanoic acid'], name='area'),
             data={
-                'A': [10575.489019426004, 156570.4119174501, 60139.43173991587, np.nan, np.nan, np.nan, np.nan, 4427.195557008974, np.nan, np.nan, 4402.446819667445, np.nan, np.nan],
+                'A': [10575.489019426004, 156570.4119174501, 60139.43173991587, np.nan, np.nan, np.nan, np.nan, 4427.195557008974, np.nan, np.nan, 4402.446819667445, np.nan, 7744.233467555068],
                 'Ader': [163869.16811285765, 8637.309332193678, 60571.47398322085, np.nan, np.nan, np.nan, np.nan, 2902.6733367707775, np.nan, 1827.8710293672254, np.nan, np.nan, np.nan],
-                'B': [np.nan, np.nan, np.nan, 22121.83564942114, 19659.68983732958, 23656.25736459595, 3317.745017327281, np.nan, 3242.0845917403203, np.nan, np.nan, np.nan, 13804.138582323782],
+                'B': [np.nan, np.nan, np.nan, 22121.83564942114, 19659.68983732958, 23656.25736459595, 3317.745017327281, np.nan, 3242.0845917403203, np.nan, np.nan, 13804.138582323782, np.nan],
             }
         ),
         'area_if_undiluted': pd.DataFrame(
-            index=pd.Index(['(z)-octadec-9-enoic acid', 'hexadecanoic acid', '(9z,12z)-octadeca-9,12-dienoic acid', 'tetradecanoic acid', '(e)-hexadec-9-enoic acid', 'hexane-2,5-dione', 'oxacycloheptadecan-2-one', 'decanoic acid', 'phenol', 'butan-2-one', '2-methylcyclopent-2-en-1-one', '(e)-pent-2-enoic acid', '4,5-dimethylhex-1-ene'], name='area_if_undiluted'),
+            index=pd.Index(['(z)-octadec-9-enoic acid', 'hexadecanoic acid', '(9z,12z)-octadeca-9,12-dienoic acid', 'tetradecanoic acid', '(e)-hexadec-9-enoic acid', 'hexane-2,5-dione', 'oxacycloheptadecan-2-one', 'phenol', 'butan-2-one', 'decanoic acid', '2-methylcyclopent-2-en-1-one', '(e)-pent-2-enoic acid', '4,5-dimethylhex-1-ene'], name='area_if_undiluted'),
             data={
-                'A': [264387.2254856501, 3914260.2979362523, 1503485.7934978968, 110679.88892522435, np.nan, np.nan, 110061.17049168612, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
+                'A': [264387.2254856501, 3914260.2979362523, 1503485.7934978968, 110679.88892522435, np.nan, np.nan, 110061.17049168612, np.nan, np.nan, 193605.8366888767, np.nan, np.nan, np.nan],
                 'Ader': [20483646.014107205, 1079663.6665242098, 7571434.247902606, 362834.1670963472, 228483.87867090316, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
-                'B': [np.nan, np.nan, np.nan, np.nan, np.nan, 22121.83564942114, np.nan, np.nan, 19659.68983732958, 23656.25736459595, 3317.745017327281, 3242.0845917403203, 13804.138582323782],
+                'B': [np.nan, np.nan, np.nan, np.nan, np.nan, 22121.83564942114, np.nan, 19659.68983732958, 23656.25736459595, np.nan, 3317.745017327281, 3242.0845917403203, 13804.138582323782],
             }
         ),
         'conc_vial_mg_L': pd.DataFrame(
             index=pd.Index(['(9z,12z)-octadeca-9,12-dienoic acid', '(z)-octadec-9-enoic acid', 'hexadecanoic acid', 'tetradecanoic acid', 'decanoic acid', 'phenol', '2-methylcyclopent-2-en-1-one', '(e)-hexadec-9-enoic acid'], name='conc_vial_mg_L'),
             data={
-                'A': [4.106325693068217, 0.14764425894471855, 3.4914351462625968, 0.10555595583489899, np.nan, np.nan, np.nan, np.nan],
+                'A': [4.106325693068217, 0.14764425894471855, 3.4914351462625968, 0.10555595583489899, 16.110917372532917, np.nan, np.nan, np.nan],
                 'Ader': [3.8503522496954825, 1.8415608200696434, 0.1709011262715786, 0.05743341165328154, np.nan, np.nan, np.nan, 0.02054160468737343],
                 'B': [np.nan, np.nan, np.nan, np.nan, np.nan, 0.5074982512365029, 0.07715745715389961, np.nan],
             }
         ),
         'conc_vial_if_undiluted_mg_L': pd.DataFrame(
-            index=pd.Index(['(9z,12z)-octadeca-9,12-dienoic acid', 'hexadecanoic acid', '(z)-octadec-9-enoic acid', 'tetradecanoic acid', 'decanoic acid', '(e)-hexadec-9-enoic acid', 'phenol', '2-methylcyclopent-2-en-1-one'], name='conc_vial_if_undiluted_mg_L'),
+            index=pd.Index(['(9z,12z)-octadeca-9,12-dienoic acid', 'hexadecanoic acid', '(z)-octadec-9-enoic acid', 'tetradecanoic acid', '(e)-hexadec-9-enoic acid', 'decanoic acid', 'phenol', '2-methylcyclopent-2-en-1-one'], name='conc_vial_if_undiluted_mg_L'),
             data={
-                'A': [102.65814232670576, 87.28587865656482, 3.691106473618185, 2.638898895872451, np.nan, np.nan, np.nan, np.nan],
-                'Ader': [481.29403121193536, 21.362640783947153, 230.19510250870547, 7.179176456660192, np.nan, 2.5677005859216706, np.nan, np.nan],
+                'A': [102.65814232670576, 87.28587865656482, 3.691106473618185, 2.638898895872451, np.nan, 402.77293431332293, np.nan, np.nan],
+                'Ader': [481.29403121193536, 21.362640783947153, 230.19510250870547, 7.179176456660192, 2.5677005859216706, np.nan, np.nan, np.nan],
                 'B': [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, 0.5074982512365029, 0.07715745715389961],
             }
         ),
         'fraction_of_sample_fr': pd.DataFrame(
-            index=pd.Index(['(9z,12z)-octadeca-9,12-dienoic acid', 'hexadecanoic acid', '(z)-octadec-9-enoic acid', 'tetradecanoic acid', 'decanoic acid', '(e)-hexadec-9-enoic acid', 'phenol', '2-methylcyclopent-2-en-1-one'], name='fraction_of_sample_fr'),
+            index=pd.Index(['(9z,12z)-octadeca-9,12-dienoic acid', 'hexadecanoic acid', '(z)-octadec-9-enoic acid', 'tetradecanoic acid', '(e)-hexadec-9-enoic acid', 'decanoic acid', 'phenol', '2-methylcyclopent-2-en-1-one'], name='fraction_of_sample_fr'),
             data={
-                'A': [0.007332724451907525, 0.006234705618326057, 0.00026365046240129915, 0.00018849277827660252, np.nan, np.nan, np.nan, np.nan],
-                'Ader': [0.03437814508656681, 0.001525902913139085, 0.01644250732205038, 0.0005127983183328709, np.nan, 0.00018340718470868995, np.nan, np.nan],
+                'A': [0.007332724451907525, 0.006234705618326057, 0.00026365046240129915, 0.00018849277827660252, np.nan, 0.028769495308094487, np.nan, np.nan],
+                'Ader': [0.03437814508656681, 0.001525902913139085, 0.01644250732205038, 0.0005127983183328709, 0.00018340718470868995, np.nan, np.nan, np.nan],
                 'B': [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, 0.00018124937544160814, 2.7556234697821363e-05],
             }
         ),
         'fraction_of_feedstock_fr': pd.DataFrame(
-            index=pd.Index(['(9z,12z)-octadeca-9,12-dienoic acid', 'hexadecanoic acid', '(z)-octadec-9-enoic acid', 'tetradecanoic acid', 'decanoic acid', '(e)-hexadec-9-enoic acid', 'phenol', '2-methylcyclopent-2-en-1-one'], name='fraction_of_feedstock_fr'),
+            index=pd.Index(['(9z,12z)-octadeca-9,12-dienoic acid', 'hexadecanoic acid', '(z)-octadec-9-enoic acid', 'tetradecanoic acid', '(e)-hexadec-9-enoic acid', 'decanoic acid', 'phenol', '2-methylcyclopent-2-en-1-one'], name='fraction_of_feedstock_fr'),
             data={
-                'A': [0.001716554591745799, 0.002033902314020852, 0.001555929426374292, 0.0003844681268991305, np.nan, np.nan, np.nan, np.nan],
-                'Ader': [0.01848189900635057, 0.0010115438077193133, 0.009260471080609506, 0.00028408598968518184, np.nan, 7.598984670517598e-05, np.nan, np.nan],
+                'A': [0.001716554591745799, 0.002033902314020852, 0.001555929426374292, 0.0003844681268991305, np.nan, 0.013233967841723464, np.nan, np.nan],
+                'Ader': [0.01848189900635057, 0.0010115438077193133, 0.009260471080609506, 0.00028408598968518184, 7.598984670517598e-05, np.nan, np.nan, np.nan],
                 'B': [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, 0.00010872467812800095, 1.9898609286992866e-06],
             }
         )
@@ -921,58 +967,58 @@ def checked_samples_param_aggrreps():
         'height': pd.DataFrame(
             index=pd.Index(['C-aliph', 'carboxyl', 'ketone', 'C-arom', 'alcohol', 'ester'], name='height'),
             data={
-                'A': [1653503.8741030835, 323399.6926465227, 0.0, 0.0, 0.0, 1419.36241499941],
+                'A': [1651930.781078005, 322843.186774585, 0.0, 0.0, 0.0, 1419.36241499941],
                 'Ader': [1048483.5942705647, 209497.12232512212, 0.0, 0.0, 0.0, 0.0],
                 'B': [27582.83802734355, 5590.929749300839, 161073.19496333148, 57177.7326745298, 12611.491966847307, 0.0],
             }
         ),
         'area': pd.DataFrame(
             index=pd.Index(['C-aliph', 'carboxyl', 'ketone', 'C-arom', 'alcohol', 'ester'], name='area'),
-            data={
-                'A': [8073115.744196826, 1567290.9192014115, 0.0, 0.0, 0.0, 4147.449062536849],
-                'Ader': [3244281.634364161, 645827.8665250427, 0.0, 0.0, 0.0, 0.0],
-                'B': [94251.19374854585, 17123.500993807433, 626471.4374662458, 176029.20455849537, 38826.144293911384, 0.0],
-            }
+    data={
+        'A': [8069070.542315948, 1565859.8667690419, 0.0, 0.0, 0.0, 4147.449062536849],
+        'Ader': [3244281.634364161, 645827.8665250427, 0.0, 0.0, 0.0, 0.0],
+        'B': [94251.19374854585, 17123.500993807433, 626471.4374662458, 176029.20455849537, 38826.144293911384, 0.0],
+    }
         ),
         'area_if_undiluted': pd.DataFrame(
             index=pd.Index(['C-aliph', 'carboxyl', 'ketone', 'C-arom', 'ester', 'alcohol'], name='area_if_undiluted'),
-            data={
-                'A': [201827893.6049206, 39182272.9800353, 0.0, 0.0, 103686.22656342122, 0.0],
-                'Ader': [405535204.2955202, 80728483.31563035, 0.0, 0.0, 0.0, 0.0],
-                'B': [94251.19374854585, 17123.500993807433, 626471.4374662458, 176029.20455849537, 0.0, 38826.144293911384],
-            }
+    data={
+        'A': [201726763.55789867, 39146496.66922605, 0.0, 0.0, 103686.22656342122, 0.0],
+        'Ader': [405535204.2955202, 80728483.31563035, 0.0, 0.0, 0.0, 0.0],
+        'B': [94251.19374854585, 17123.500993807433, 626471.4374662458, 176029.20455849537, 0.0, 38826.144293911384],
+    }
         ),
         'conc_vial_mg_L': pd.DataFrame(
             index=pd.Index(['C-aliph', 'carboxyl', 'C-arom', 'ketone', 'alcohol'], name='conc_vial_mg_L'),
-            data={
-                'A': [291.5503459097622, 60.497977193910856, 0.0, 0.0, 0.0],
-                'Ader': [73.2484339653872, 14.545500371460587, 0.0, 0.0, 0.0],
-                'B': [2.709346765182483, 0.0, 6.166256363605159, 3.674528613447748, 1.36006954031895],
-            }
+    data={
+        'A': [283.134805039116, 57.52085007212886, 0.0, 0.0, 0.0],
+        'Ader': [73.2484339653872, 14.545500371460587, 0.0, 0.0, 0.0],
+        'B': [2.709346765182483, 0.0, 6.166256363605159, 3.674528613447748, 1.36006954031895],
+    }
         ),
         'conc_vial_if_undiluted_mg_L': pd.DataFrame(
             index=pd.Index(['C-aliph', 'carboxyl', 'C-arom', 'ketone', 'alcohol'], name='conc_vial_if_undiluted_mg_L'),
-            data={
-                'A': [7288.758647744056, 1512.4494298477714, 0.0, 0.0, 0.0],
-                'Ader': [9156.054245673402, 1818.1875464325735, 0.0, 0.0, 0.0],
-                'B': [2.709346765182483, 0.0, 6.166256363605159, 3.674528613447748, 1.36006954031895],
-            }
+    data={
+        'A': [7078.3701259779, 1438.0212518032215, 0.0, 0.0, 0.0],
+        'Ader': [9156.054245673402, 1818.1875464325735, 0.0, 0.0, 0.0],
+        'B': [2.709346765182483, 0.0, 6.166256363605159, 3.674528613447748, 1.36006954031895],
+    }
         ),
         'fraction_of_sample_fr': pd.DataFrame(
             index=pd.Index(['C-aliph', 'carboxyl', 'C-arom', 'ketone', 'alcohol'], name='fraction_of_sample_fr'),
-            data={
-                'A': [0.5206256176960039, 0.10803210213198365, 0.0, 0.0, 0.0],
-                'Ader': [0.6540038746909574, 0.12987053903089812, 0.0, 0.0, 0.0],
-                'B': [0.0009676238447080297, 0.0, 0.002202234415573271, 0.0013123316476599102, 0.00048573912154248214],
-            }
+    data={
+        'A': [0.5055978661412784, 0.10271580370023008, 0.0, 0.0, 0.0],
+        'Ader': [0.6540038746909574, 0.12987053903089812, 0.0, 0.0, 0.0],
+        'B': [0.0009676238447080297, 0.0, 0.002202234415573271, 0.0013123316476599102, 0.00048573912154248214],
+    }
         ),
         'fraction_of_feedstock_fr': pd.DataFrame(
             index=pd.Index(['C-aliph', 'carboxyl', 'C-arom', 'ketone', 'alcohol'], name='fraction_of_feedstock_fr'),
-            data={
-                'A': [0.23699631038831473, 0.04920001733649612, 0.0, 0.0, 0.0],
-                'Ader': [0.3107992314028268, 0.06171657872932608, 0.0, 0.0, 0.0],
-                'B': [0.000478931154804311, 0.0, 0.0010906310654745584, 0.0006495463241603489, 0.00024055666913762634],
-            }
+    data={
+        'A': [0.23008354467314104, 0.04675452005788948, 0.0, 0.0, 0.0],
+        'Ader': [0.3107992314028268, 0.06171657872932608, 0.0, 0.0, 0.0],
+        'B': [0.000478931154804311, 0.0, 0.0010906310654745584, 0.0006495463241603489, 0.00024055666913762634],
+    }
         )
     }
     return reports
@@ -982,60 +1028,60 @@ def checked_samples_param_aggrreps_std():
     reports = {
         'height': pd.DataFrame(
             index=pd.Index(['C-aliph', 'carboxyl', 'ketone', 'C-arom', 'alcohol', 'ester'], name='height'),
-            data={
-                'A': [33572.681565843486, 6721.194551751164, 0.0, 0.0, 0.0, 166.78954924783815],
-                'Ader': [75153.30566953593, 14433.563492713163, 0.0, 0.0, 0.0, 0.0],
-                'B': [6487.963541864086, 192.35172504043408, 8629.636927224863, 6217.532537943509, 1371.3793462610597, 0.0],
-            }
+    data={
+        'A': [35797.371056783835, 7508.212703385821, 0.0, 0.0, 0.0, 166.78954924783815],
+        'Ader': [75153.30566953593, 14433.563492713163, 0.0, 0.0, 0.0, 0.0],
+        'B': [6487.963541864086, 192.35172504043408, 8629.636927224863, 6217.532537943509, 1371.3793462610597, 0.0],
+    }
         ),
         'area': pd.DataFrame(
             index=pd.Index(['C-aliph', 'carboxyl', 'ketone', 'C-arom', 'alcohol', 'ester'], name='area'),
-            data={
-                'A': [195426.4379503677, 39700.497529875116, 0.0, 0.0, 0.0, 1004.2860093008128],
-                'Ader': [199552.22488919983, 38249.3835185481, 0.0, 0.0, 0.0, 0.0],
-                'B': [21973.821276880837, 1457.7399327444466, 42815.265175930195, 16107.534210999198, 3552.7823298636085, 0.0],
-            }
+    data={
+        'A': [201147.21731284214, 41724.311288199315, 0.0, 0.0, 0.0, 1004.2860093008128],
+        'Ader': [199552.22488919983, 38249.3835185481, 0.0, 0.0, 0.0, 0.0],
+        'B': [21973.821276880837, 1457.7399327444466, 42815.265175930195, 16107.534210999198, 3552.7823298636085, 0.0],
+    }
         ),
         'area_if_undiluted': pd.DataFrame(
             index=pd.Index(['C-aliph', 'carboxyl', 'ketone', 'C-arom', 'ester', 'alcohol'], name='area_if_undiluted'),
-            data={
-                'A': [4885660.948759192, 992512.4382468779, 0.0, 0.0, 25107.15023252032, 0.0],
-                'Ader': [24944028.111149978, 4781172.939818514, 0.0, 0.0, 0.0, 0.0],
-                'B': [21973.821276880837, 1457.7399327444466, 42815.26517593019, 16107.534210999198, 0.0, 3552.7823298636085],
-            }
+    data={
+        'A': [5028680.432821053, 1043107.7822049828, 0.0, 0.0, 25107.15023252032, 0.0],
+        'Ader': [24944028.111149978, 4781172.939818514, 0.0, 0.0, 0.0, 0.0],
+        'B': [21973.821276880837, 1457.7399327444466, 42815.26517593019, 16107.534210999198, 0.0, 3552.7823298636085],
+    }
         ),
         'conc_vial_mg_L': pd.DataFrame(
             index=pd.Index(['C-aliph', 'carboxyl', 'C-arom', 'ketone', 'alcohol'], name='conc_vial_mg_L'),
-            data={
-                'A': [6.5353020421660615, 1.3165427371870901, 0.0, 0.0, 0.0],
-                'Ader': [4.984729502757059, 0.9565736502096863, 0.0, 0.0, 0.0],
-                'B': [0.03377575111300582, 0.0, 0.41580236064012105, 0.04580807650772246, 0.09171206841758799],
-            }
+    data={
+        'A': [18.436674076139045, 5.526836289719974, 0.0, 0.0, 0.0],
+        'Ader': [4.984729502757059, 0.9565736502096863, 0.0, 0.0, 0.0],
+        'B': [0.03377575111300582, 0.0, 0.41580236064012105, 0.04580807650772246, 0.09171206841758799],
+    }
         ),
         'conc_vial_if_undiluted_mg_L': pd.DataFrame(
             index=pd.Index(['C-aliph', 'carboxyl', 'C-arom', 'ketone', 'alcohol'], name='conc_vial_if_undiluted_mg_L'),
-            data={
-                'A': [163.3825510541519, 32.91356842967732, 0.0, 0.0, 0.0],
-                'Ader': [623.0911878446323, 119.57170627621078, 0.0, 0.0, 0.0],
-                'B': [0.03377575111300582, 0.0, 0.41580236064012105, 0.04580807650772246, 0.09171206841758799],
-            }
+    data={
+        'A': [460.9168519034765, 138.1709072429994, 0.0, 0.0, 0.0],
+        'Ader': [623.0911878446323, 119.57170627621078, 0.0, 0.0, 0.0],
+        'B': [0.03377575111300582, 0.0, 0.41580236064012105, 0.04580807650772246, 0.09171206841758799],
+    }
         ),
         'fraction_of_sample_fr': pd.DataFrame(
             index=pd.Index(['C-aliph', 'carboxyl', 'C-arom', 'ketone', 'alcohol'], name='fraction_of_sample_fr'),
-            data={
-                'A': [0.01167018221815368, 0.002350969173548375, 0.0, 0.0, 0.0],
-                'Ader': [0.04450651341747372, 0.00854083616258648, 0.0, 0.0, 0.0],
-                'B': [1.2062768254644968e-05, 0.0, 0.0001485008430857575, 1.6360027324186634e-05, 3.275431014913856e-05],
-            }
+    data={
+        'A': [0.03292263227881972, 0.009869350517357094, 0.0, 0.0, 0.0],
+        'Ader': [0.04450651341747372, 0.00854083616258648, 0.0, 0.0, 0.0],
+        'B': [1.2062768254644968e-05, 0.0, 0.0001485008430857575, 1.6360027324186634e-05, 3.275431014913856e-05],
+    }
         ),
         'fraction_of_feedstock_fr': pd.DataFrame(
             index=pd.Index(['C-aliph', 'carboxyl', 'C-arom', 'ketone', 'alcohol'], name='fraction_of_feedstock_fr'),
-            data={
-                'A': [0.004734701118759861, 0.0009563848477203726, 0.0, 0.0, 0.0],
-                'Ader': [0.024426518981430268, 0.004689897339536736, 0.0, 0.0, 0.0],
-                'B': [8.710635362591769e-07, 0.0, 8.908006621759261e-05, 1.1813725467879507e-06, 1.9648077791126472e-05],
-            }
+    data={
+        'A': [0.014510828146666238, 0.004414840265872383, 0.0, 0.0, 0.0],
+        'Ader': [0.024426518981430268, 0.004689897339536736, 0.0, 0.0, 0.0],
+        'B': [8.710635362591769e-07, 0.0, 8.908006621759261e-05, 1.1813725467879507e-06, 1.9648077791126472e-05],
+    }
         )
     }
     return reports
-
+# fmt: on

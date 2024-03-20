@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gcms_data_analysis"
-version = "1.0.7"
+version = "1.0.8"
 authors = [{ name = "Matteo Pecchi" }]
 description = "Automatic analysis of GC-MS data"
 readme = "README.md"
