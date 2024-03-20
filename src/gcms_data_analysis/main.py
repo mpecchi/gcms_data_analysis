@@ -1751,17 +1751,17 @@ class Project:
 
     def __init__(self):
         """ """
-        self.files_info = None
-        self.files_info_created = False
-        self.deriv_files_present = False
-        self.class_code_frac = None
-        self.class_code_frac_loaded = False
-        self.calibrations = {}
-        self.is_calibrations_deriv = {}
-        self.calibrations_loaded = False
-        self.calibrations_not_present = False
-        self.list_of_all_compounds = []
-        self.list_of_all_deriv_compounds = []
+        self.files_info: pd.DataFrame | None = None
+        self.files_info_created: bool = False
+        self.deriv_files_present: bool = False
+        self.class_code_frac: pd.DataFrame | None = None
+        self.class_code_frac_loaded: bool = False
+        self.calibrations: dict[str : pd.DataFrame] = {}
+        self.is_calibrations_deriv: dict[str:bool] = {}
+        self.calibrations_loaded: bool = False
+        self.calibrations_not_present: bool = False
+        self.list_of_all_compounds: list[str] = []
+        self.list_of_all_deriv_compounds: list[str] = []
         self.list_of_all_compounds_created = False
         self.list_of_all_deriv_compounds_created = False
         self.compounds_properties = None
@@ -2826,127 +2826,163 @@ class Project:
             self.save_files_param_aggrrep(param=param)
         return aggrrep
 
-    def create_samples_param_report(self, param="conc_vial_mg_L"):
-        """Creates a detailed report for each parameter across all SAMPLES,
-        displaying the concentration of each compound in each sample.
-        This report aids in the analysis and comparison of compound
-        concentrations across SAMPLES."""
-        print("Info: create_param_report: ", param)
+    def create_samples_param_report(self, param: str = "conc_vial_mg_L"):
+        print(f"Info: create_samples_param_report: {param = }")
         if param not in Project.acceptable_params:
             raise ValueError(f"{param = } is not an acceptable param")
-        if not self.samples_created:
-            self.create_samples_from_files()
-        _all_comps = self.compounds_properties["iupac_name"].tolist()
-        if self.deriv_files_present:
-            _all_comps += self.deriv_compounds_properties["iupac_name"].tolist()
-        rep = pd.DataFrame(
-            index=list(set(_all_comps)),
-            columns=list(self.samples_info.index),
-            dtype="float",
+        if param not in self.list_of_files_param_reports:
+            self.create_files_param_report(param)
+        file_to_sample_rename = dict(
+            zip(self.files_info.index.tolist(), self.files_info["samplename"])
         )
-        rep_std = pd.DataFrame(
-            index=list(set(_all_comps)),
-            columns=list(self.samples_info.index),
-            dtype="float",
-        )
-        rep.index.name, rep_std.index.name = param, param
-
-        for comp in rep.index.tolist():  # add conc values
-            for samplename in rep.columns.tolist():
-                smp = self.samples[samplename].set_index("iupac_name")
-                try:
-                    ave = smp.loc[comp, param]
-                except KeyError:
-                    ave = 0
-                smp_std = self.samples_std[samplename].set_index("iupac_name")
-                try:
-                    std = smp_std.loc[comp, param]
-                except KeyError:
-                    std = np.nan
-                rep.loc[comp, samplename] = ave
-                rep_std.loc[comp, samplename] = std
-
-        rep = rep.sort_index(key=rep.max(1).get, ascending=False)
-        rep = rep.loc[:, rep.any(axis=0)]  # drop columns with only 0s
-        rep = rep.loc[rep.any(axis=1), :]  # drop rows with only 0s
-        rep_std = rep_std.reindex(rep.index)
-        self.samples_reports[param] = rep
-        self.samples_reports_std[param] = rep_std
+        filerep = self.files_reports[param].copy()
+        filerep.rename(columns=file_to_sample_rename, inplace=True)
+        self.samples_reports[param] = filerep.T.groupby(by=filerep.columns).mean().T
+        self.samples_reports_std[param] = filerep.T.groupby(by=filerep.columns).std().T
         self.list_of_samples_param_reports.append(param)
         if Project.auto_save_to_excel:
             self.save_samples_param_report(param=param)
-        return rep, rep_std
+        return self.samples_reports[param], self.samples_reports_std[param]
 
-    def create_samples_param_aggrrep(self, param="conc_vial_mg_L"):
-        """Aggregates compound concentration data by functional group for each
-        parameter across all SAMPLES, providing a summarized view of functional
-        group concentrations. This aggregation facilitates the understanding
-        of functional group distribution across SAMPLES."""
-        print("Info: create_param_aggrrep: ", param)
+    def create_samples_param_aggrrep(self, param: str = "conc_vial_mg_L"):
+        print(f"Info: create_samples_param_aggrrep: {param = }")
         if param not in Project.acceptable_params:
             raise ValueError(f"{param = } is not an acceptable param")
-        if param not in self.list_of_samples_param_reports:
-            self.create_samples_param_report(param)
-        # fg = functional groups, mf = mass fraction
-        samplenames = self.samples_info.index.tolist()
-        _all_comps = self.samples_reports[param].index.tolist()
-        cols_with_fg_mf_labs = list(self.compounds_properties)
-        if self.deriv_files_present:
-            for c in list(self.deriv_compounds_properties):
-                if c not in cols_with_fg_mf_labs:
-                    cols_with_fg_mf_labs.append(c)
-        fg_mf_labs = [
-            c
-            for c in cols_with_fg_mf_labs
-            if c.startswith("fg_mf_")
-            if c != "fg_mf_total"
-        ]
-        fg_labs = [c[6:] for c in fg_mf_labs]
-        # create a df with iupac name index and fg_mf columns (underiv and deriv)
-        comps_df = self.compounds_properties.set_index("iupac_name")
-        if self.deriv_files_present:
-            deriv_comps_df = self.deriv_compounds_properties.set_index("iupac_name")
-            all_comps_df = pd.concat([comps_df, deriv_comps_df])
-        else:
-            all_comps_df = comps_df
-        all_comps_df = all_comps_df[~all_comps_df.index.duplicated(keep="first")]
-        fg_mf_all = pd.DataFrame(index=_all_comps, columns=fg_mf_labs)
-        for idx in fg_mf_all.index.tolist():
-            fg_mf_all.loc[idx, fg_mf_labs] = all_comps_df.loc[idx, fg_mf_labs]
-        # create the aggregated dataframes and compute aggregated results
-        aggrrep = pd.DataFrame(columns=samplenames, index=fg_labs, dtype="float")
-        aggrrep.index.name = param  # is the parameter
-        aggrrep.fillna(0, inplace=True)
-        aggrrep_std = pd.DataFrame(columns=samplenames, index=fg_labs, dtype="float")
-        aggrrep_std.index.name = param  # is the parameter
-        aggrrep_std.fillna(0, inplace=True)
-        for col in samplenames:
-            list_iupac = self.samples_reports[param].index
-            signal = self.samples_reports[param].loc[:, col].values
-            signal_std = self.samples_reports_std[param].loc[:, col].values
-            for fg, fg_mf in zip(fg_labs, fg_mf_labs):
-                # each compound contributes to the cumulative sum of each
-                # functional group for the based on the mass fraction it has
-                # of that functional group (fg_mf act as weights)
-                # if fg_mf in subrep: multiply signal for weigth and sum
-                # to get aggregated
-                weights = fg_mf_all.loc[list_iupac, fg_mf].astype(signal.dtype)
-
-                aggrrep.loc[fg, col] = (signal * weights).sum()
-                aggrrep_std.loc[fg, col] = (signal_std * weights).sum()
-        aggrrep = aggrrep.loc[(aggrrep != 0).any(axis=1), :]  # drop rows with only 0
-        aggrrep_std = aggrrep_std.reindex(aggrrep.index)
-        aggrrep = aggrrep.sort_index(
-            key=aggrrep[samplenames].max(1).get, ascending=False
+        if param not in self.list_of_files_param_aggrreps:
+            self.create_files_param_aggrrep(param)
+        file_to_sample_rename = dict(
+            zip(self.files_info.index.tolist(), self.files_info["samplename"])
         )
-        aggrrep_std = aggrrep_std.reindex(aggrrep.index)
-
-        self.samples_aggrreps[param] = aggrrep
-        self.samples_aggrreps_std[param] = aggrrep_std
+        fileagg = self.files_aggrreps[param].copy()
+        fileagg.rename(columns=file_to_sample_rename, inplace=True)
+        self.samples_aggrreps[param] = fileagg.T.groupby(by=fileagg.columns).mean().T
+        self.samples_aggrreps_std[param] = fileagg.T.groupby(by=fileagg.columns).std().T
         self.list_of_samples_param_aggrreps.append(param)
         if Project.auto_save_to_excel:
             self.save_samples_param_aggrrep(param=param)
-        return aggrrep, aggrrep_std
+        return self.samples_aggrreps[param], self.samples_aggrreps_std[param]
+
+    # def create_samples_param_report(self, param="conc_vial_mg_L"):
+    #     """Creates a detailed report for each parameter across all SAMPLES,
+    #     displaying the concentration of each compound in each sample.
+    #     This report aids in the analysis and comparison of compound
+    #     concentrations across SAMPLES."""
+    #     print("Info: create_param_report: ", param)
+    #     if param not in Project.acceptable_params:
+    #         raise ValueError(f"{param = } is not an acceptable param")
+    #     if not self.samples_created:
+    #         self.create_samples_from_files()
+    #     _all_comps = self.compounds_properties["iupac_name"].tolist()
+    #     if self.deriv_files_present:
+    #         _all_comps += self.deriv_compounds_properties["iupac_name"].tolist()
+    #     rep = pd.DataFrame(
+    #         index=list(set(_all_comps)),
+    #         columns=list(self.samples_info.index),
+    #         dtype="float",
+    #     )
+    #     rep_std = pd.DataFrame(
+    #         index=list(set(_all_comps)),
+    #         columns=list(self.samples_info.index),
+    #         dtype="float",
+    #     )
+    #     rep.index.name, rep_std.index.name = param, param
+
+    #     for comp in rep.index.tolist():  # add conc values
+    #         for samplename in rep.columns.tolist():
+    #             smp = self.samples[samplename].set_index("iupac_name")
+    #             try:
+    #                 ave = smp.loc[comp, param]
+    #             except KeyError:
+    #                 ave = 0
+    #             smp_std = self.samples_std[samplename].set_index("iupac_name")
+    #             try:
+    #                 std = smp_std.loc[comp, param]
+    #             except KeyError:
+    #                 std = np.nan
+    #             rep.loc[comp, samplename] = ave
+    #             rep_std.loc[comp, samplename] = std
+
+    #     rep = rep.sort_index(key=rep.max(1).get, ascending=False)
+    #     rep = rep.loc[:, rep.any(axis=0)]  # drop columns with only 0s
+    #     rep = rep.loc[rep.any(axis=1), :]  # drop rows with only 0s
+    #     rep_std = rep_std.reindex(rep.index)
+    #     self.samples_reports[param] = rep
+    #     self.samples_reports_std[param] = rep_std
+    #     self.list_of_samples_param_reports.append(param)
+    #     if Project.auto_save_to_excel:
+    #         self.save_samples_param_report(param=param)
+    #     return rep, rep_std
+
+    # def create_samples_param_aggrrep(self, param="conc_vial_mg_L"):
+    #     """Aggregates compound concentration data by functional group for each
+    #     parameter across all SAMPLES, providing a summarized view of functional
+    #     group concentrations. This aggregation facilitates the understanding
+    #     of functional group distribution across SAMPLES."""
+    #     print("Info: create_param_aggrrep: ", param)
+    #     if param not in Project.acceptable_params:
+    #         raise ValueError(f"{param = } is not an acceptable param")
+    #     if param not in self.list_of_samples_param_reports:
+    #         self.create_samples_param_report(param)
+    #     # fg = functional groups, mf = mass fraction
+    #     samplenames = self.samples_info.index.tolist()
+    #     _all_comps = self.samples_reports[param].index.tolist()
+    #     cols_with_fg_mf_labs = list(self.compounds_properties)
+    #     if self.deriv_files_present:
+    #         for c in list(self.deriv_compounds_properties):
+    #             if c not in cols_with_fg_mf_labs:
+    #                 cols_with_fg_mf_labs.append(c)
+    #     fg_mf_labs = [
+    #         c
+    #         for c in cols_with_fg_mf_labs
+    #         if c.startswith("fg_mf_")
+    #         if c != "fg_mf_total"
+    #     ]
+    #     fg_labs = [c[6:] for c in fg_mf_labs]
+    #     # create a df with iupac name index and fg_mf columns (underiv and deriv)
+    #     comps_df = self.compounds_properties.set_index("iupac_name")
+    #     if self.deriv_files_present:
+    #         deriv_comps_df = self.deriv_compounds_properties.set_index("iupac_name")
+    #         all_comps_df = pd.concat([comps_df, deriv_comps_df])
+    #     else:
+    #         all_comps_df = comps_df
+    #     all_comps_df = all_comps_df[~all_comps_df.index.duplicated(keep="first")]
+    #     fg_mf_all = pd.DataFrame(index=_all_comps, columns=fg_mf_labs)
+    #     for idx in fg_mf_all.index.tolist():
+    #         fg_mf_all.loc[idx, fg_mf_labs] = all_comps_df.loc[idx, fg_mf_labs]
+    #     # create the aggregated dataframes and compute aggregated results
+    #     aggrrep = pd.DataFrame(columns=samplenames, index=fg_labs, dtype="float")
+    #     aggrrep.index.name = param  # is the parameter
+    #     aggrrep.fillna(0, inplace=True)
+    #     aggrrep_std = pd.DataFrame(columns=samplenames, index=fg_labs, dtype="float")
+    #     aggrrep_std.index.name = param  # is the parameter
+    #     aggrrep_std.fillna(0, inplace=True)
+    #     for col in samplenames:
+    #         list_iupac = self.samples_reports[param].index
+    #         signal = self.samples_reports[param].loc[:, col].values
+    #         signal_std = self.samples_reports_std[param].loc[:, col].values
+    #         for fg, fg_mf in zip(fg_labs, fg_mf_labs):
+    #             # each compound contributes to the cumulative sum of each
+    #             # functional group for the based on the mass fraction it has
+    #             # of that functional group (fg_mf act as weights)
+    #             # if fg_mf in subrep: multiply signal for weigth and sum
+    #             # to get aggregated
+    #             weights = fg_mf_all.loc[list_iupac, fg_mf].astype(signal.dtype)
+
+    #             aggrrep.loc[fg, col] = (signal * weights).sum()
+    #             aggrrep_std.loc[fg, col] = (signal_std * weights).sum()
+    #     aggrrep = aggrrep.loc[(aggrrep != 0).any(axis=1), :]  # drop rows with only 0
+    #     aggrrep_std = aggrrep_std.reindex(aggrrep.index)
+    #     aggrrep = aggrrep.sort_index(
+    #         key=aggrrep[samplenames].max(1).get, ascending=False
+    #     )
+    #     aggrrep_std = aggrrep_std.reindex(aggrrep.index)
+
+    #     self.samples_aggrreps[param] = aggrrep
+    #     self.samples_aggrreps_std[param] = aggrrep_std
+    #     self.list_of_samples_param_aggrreps.append(param)
+    #     if Project.auto_save_to_excel:
+    #         self.save_samples_param_aggrrep(param=param)
+    #     return aggrrep, aggrrep_std
 
     def save_files_info(self):
         """Saves the 'files_info' DataFrame as an Excel file in a 'files'

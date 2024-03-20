@@ -67,9 +67,6 @@ samples, samples_std = gcms.create_samples_from_files()
 s1, s2, s3 = samples["A"], samples["Ader"], samples["B"]
 sd1, sd2, sd3 = samples_std["A"], samples_std["Ader"], samples_std["B"]
 
-# Add statistical information to the samples_info DataFrame, enhancing the initial analysis with statistical data
-samples_info = gcms.add_stats_to_samples_info()
-
 # Generate reports for specific parameters (e.g., concentration, mass fraction) for files and samples
 rep_files_conc = gcms.create_files_param_report(param="conc_vial_mg_L")
 rep_files_fr = gcms.create_files_param_report(param="fraction_of_sample_fr")
