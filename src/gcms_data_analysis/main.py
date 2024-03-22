@@ -617,7 +617,7 @@ def name_to_properties(
     )
 
     # print(f"{df.loc[comp_name, :]}")
-    # mol_weigth = df.loc[comp_name, "molecular_weight"]
+    # mol_weight = df.loc[comp_name, "molecular_weight"]
 
     for cl in classes:  # get counts and mf of each class in compound
         newdf.loc[comp_name, cl] = fragmentation[cl]  # counts in
@@ -1649,7 +1649,7 @@ class Project:
     ]
     semi_calibration = True
     tanimoto_similarity_threshold = 0.4
-    delta_mol_weigth_threshold = 100
+    delta_mol_weight_threshold = 100
     column_to_sort_values_in_samples = "retention_time"
 
     @classmethod
@@ -1665,7 +1665,7 @@ class Project:
         cls.shared_path = cls.in_path.parents[0]
 
     @classmethod
-    def set_auto_save_to_excel(cls, new_auto_save_to_excel):
+    def set_auto_save_to_excel(cls, new_auto_save_to_excel: bool):
         """Enable or disable automatic saving of results to Excel (default True).
         This method updates the class attribute that controls whether
         analysis results are automatically saved in an Excel file."""
@@ -1686,11 +1686,11 @@ class Project:
         cls.tanimoto_similarity_threshold = new_tanimoto_similarity_threshold
 
     @classmethod
-    def set_delta_mol_weigth_threshold(cls, new_delta_mol_weigth_threshold):
+    def set_delta_mol_weight_threshold(cls, new_delta_mol_weight_threshold):
         """Set the delta molecular weight threshold for compound matching (default 100).
         This method updates the class attribute that specifies the threshold used for
         comparing molecular weights in compound matching."""
-        cls.delta_mol_weigth_threshold = new_delta_mol_weigth_threshold
+        cls.delta_mol_weight_threshold = new_delta_mol_weight_threshold
 
     @classmethod
     def set_plot_grid(cls, new_plot_grid):
@@ -2434,7 +2434,7 @@ class Project:
                         df_sim.Similarity >= Project.tanimoto_similarity_threshold
                     ]
                     df_sim = df_sim[
-                        df_sim.delta_mw < Project.delta_mol_weigth_threshold
+                        df_sim.delta_mw < Project.delta_mol_weight_threshold
                     ]
                     # if a compound matches the requirements
                     if not df_sim.empty:  # assign the calibration
@@ -2813,7 +2813,7 @@ class Project:
                 # each compound contributes to the cumulative sum of each
                 # functional group for the based on the mass fraction it has
                 # of that functional group (fg_mf act as weights)
-                # if fg_mf in subrep: multiply signal for weigth and sum
+                # if fg_mf in subrep: multiply signal for weight and sum
                 # to get aggregated
                 weights = fg_mf_all.loc[list_iupac, fg_mf].astype(signal.dtype)
 
@@ -2964,7 +2964,7 @@ class Project:
     #             # each compound contributes to the cumulative sum of each
     #             # functional group for the based on the mass fraction it has
     #             # of that functional group (fg_mf act as weights)
-    #             # if fg_mf in subrep: multiply signal for weigth and sum
+    #             # if fg_mf in subrep: multiply signal for weight and sum
     #             # to get aggregated
     #             weights = fg_mf_all.loc[list_iupac, fg_mf].astype(signal.dtype)
 
