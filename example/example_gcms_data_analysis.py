@@ -121,3 +121,45 @@ gcms.plot_ave_std(
     y_lim=[0, 0.5],
     color_palette="Set2",
 )
+
+# %%
+import pickle
+
+folder_path: plib.Path = plib.Path(r"C:\Users\mp933\Desktop\New folder")
+pickle_path: plib.Path = plib.Path(folder_path, "pickle_object.pkl")
+with open(pickle_path, "wb") as output_file:
+    pickle.dump(gcms, output_file)
+# %%
+import pickle
+import pathlib as plib  # Used for handling file and directory paths
+from gcms_data_analysis import (
+    Project,
+)  # Import the Project class from the gcms_data_analysis package
+
+folder_path: plib.Path = plib.Path(r"C:\Users\mp933\Desktop\New folder")
+pickle_path: plib.Path = plib.Path(folder_path, "pickle_object.pkl")
+with open(pickle_path, "rb") as input_file:
+    gcms: Project = pickle.load(input_file)
+from gcms_data_analysis.plotting import plot_pave_std
+
+# %%
+myfig = plot_pave_std(
+    gcms,
+    files_or_samples="files",
+    width=12,
+    height=5,
+    legend_location="outside",
+    y_lim=[0, 100],
+)
+# %%
+myfig = plot_pave_std(
+    gcms,
+    files_or_samples="samples",
+    width=6,
+    height=6,
+    legend_location="best",
+    y_lim=[0, 100],
+    min_y_thresh=10,
+)
+
+# %%
