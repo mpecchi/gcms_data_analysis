@@ -40,54 +40,60 @@ def checked_compounds_properties():
     properties = pd.read_excel(
         plib.Path(
             name_to_properties_dir,
-            "checked_compounds_properties_correct.xlsx",
+            "checked_compounds_properties.xlsx",
         ),
         index_col="comp_name",
     )
     return properties
 
 
-# Project class testing
+# test minimal_case
+minimal_case_dir = test_dir / "data_minimal_case"
+
+
 @pytest.fixture
 def gcms() -> Project:
-
-    folder_path: plib.Path = plib.Path(
-        plib.Path(__file__).parent.parent, "tests/data_for_testing/"
-    )
-    Project.set_folder_path(folder_path)
-    Project.auto_save_to_excel(False)
+    Project.set_folder_path(minimal_case_dir)
+    Project.set_auto_save_to_excel(False)
     return Project()
 
 
-# fmt: off
 @pytest.fixture
 def checked_files_info():
     files_info = pd.DataFrame(
-        index=pd.Index(['A_1', 'A_2', 'Ader_1', 'Ader_2', 'B_1', 'B_2'], name='filename'),
+        index=pd.Index(["S_1", "S_2", "T_1", "T_2", "T_3"], name="filename"),
         data={
-            'samplename': ['A', 'A', 'Ader', 'Ader', 'B', 'B'],
-            'derivatized': [False, False, True, True, False, False],
-            'dilution_factor': [25, 25, 125, 125, 1, 1],
-            'total_sample_conc_in_vial_mg_L': [560.0000000000001, 560.0000000000001, 112.0, 112.0, 2800.0, 2800.0],
-            'sample_yield_on_feedstock_basis_fr': [0.45, 0.46, 0.47, 0.48, 0.49, 0.5],
-            'calibration_file': ['calibration', 'calibration', 'deriv_calibration', 'deriv_calibration', 'calibration', 'calibration'],
-            }
+            "samplename": ["S", "S", "T", "T", "T"],
+            "replicate_number": [1, 2, 1, 2, 3],
+            "derivatized": [False, False, False, False, False],
+            "calibration_file": [
+                "cal_minimal",
+                "cal_minimal",
+                "cal_minimal",
+                "cal_minimal",
+                "cal_minimal",
+            ],
+            "dilution_factor": [1, 1, 1, 1, 1],
+            "total_sample_conc_in_vial_mg_L": [1, 1, 1, 1, 1],
+            "sample_yield_on_feedstock_basis_fr": [1, 1, 1, 1, 1],
+        },
     )
     return files_info
+
 
 @pytest.fixture
 def checked_created_files_info():
     created_files_info = pd.DataFrame(
-        index=pd.Index(['A_1', 'A_2', 'Ader_1', 'Ader_2', 'B_1', 'B_2'], name='filename'),
+        index=pd.Index(["S_1", "S_2", "T_1", "T_2", "T_3"], name="filename"),
         data={
-            'samplename': ['A', 'A', 'Ader', 'Ader', 'B', 'B'],
-            'replicate_number': ['1', '2', '1', '2', '1', '2'],
-            'derivatized': [False, False, False, False, False, False],
-            'calibration_file': [False, False, False, False, False, False],
-            'dilution_factor': [1, 1, 1, 1, 1, 1],
-            'total_sample_conc_in_vial_mg_L': [1, 1, 1, 1, 1, 1],
-            'sample_yield_on_feedstock_basis_fr': [1, 1, 1, 1, 1, 1],
-        }
+            "samplename": ["S", "S", "T", "T", "T"],
+            "replicate_number": ["1", "2", "1", "2", "3"],
+            "derivatized": [False, False, False, False, False],
+            "calibration_file": [False, False, False, False, False],
+            "dilution_factor": [1, 1, 1, 1, 1],
+            "total_sample_conc_in_vial_mg_L": [1, 1, 1, 1, 1],
+            "sample_yield_on_feedstock_basis_fr": [1, 1, 1, 1, 1],
+        },
     )
     return created_files_info
 
@@ -95,79 +101,81 @@ def checked_created_files_info():
 @pytest.fixture
 def checked_files():
     files = {
-        'A_1': pd.DataFrame(
-            index=pd.Index(['unidentified', 'tetradecanoic acid', 'oxacycloheptadecan-2-one', 'n-hexadecanoic acid', '9,12-octadecadienoic acid (z,z)-', 'oleic acid'], name='A_1'),
+        "S_1": pd.DataFrame(
+            index=pd.Index(["phenol", "naphthalene", "dodecane"], name="S_1"),
             data={
-                'iupac_name': ['n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.'],
-                'retention_time': [6.025, 36.163, 40.052, 40.492, 43.847, 43.986],
-                'area': [23386, 44389, 15068, 1878180, 1456119, 6379752],
-                'height': [24797, 15019, 5705, 493759, 339605, 1147599],
-                'area_if_undiluted': [584650, 1109725, 376700, 46954500, 36402975, 159493800],
-            }),
-        'A_2': pd.DataFrame(
-            index=pd.Index(['unidentified', 'n-decanoic acid', 'tetradecanoic acid', 'oxacycloheptadecan-2-one', 'n-hexadecanoic acid', '9,12-octadecadienoic acid (z,z)-', 'oleic acid'], name='A_2'),
+                "iupac_name": ["n.a.", "n.a.", "n.a."],
+                "retention_time": [13.703, 20.942, 21.426],
+                "area": [20, 200, 2000],
+                "height": [20, 200, 2000],
+                "area_if_undiluted": [20, 200, 2000],
+            },
+        ),
+        "S_2": pd.DataFrame(
+            index=pd.Index(["phenol", "naphthalene", "dodecane"], name="S_2"),
             data={
-                'iupac_name': ['n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.'],
-                'retention_time': [6.025, 26.284, 36.158, 40.041, 40.494, 43.847, 43.988],
-                'area': [25493, 10952, 50650, 21294, 1656756, 1371069, 6394708],
-                'height': [25716, 4259, 14520, 6739, 461942, 324690, 1138647],
-                'area_if_undiluted': [637325, 273800, 1266250, 532350, 41418900, 34276725, 159867700],
-            }),
-        'Ader_1': pd.DataFrame(
-            index=pd.Index(['unidentified', 'myristic acid, tms derivative', 'palmitelaidic acid, tms derivative', 'palmitic acid, tms derivative', '9,12-octadecadienoic acid (z,z)-, tms derivative', '9-octadecenoic acid, (z)-, tms derivative'], name='Ader_1'),
+                "iupac_name": ["n.a.", "n.a.", "n.a."],
+                "retention_time": [13.703, 20.942, 21.426],
+                "area": [40, 400, 4000],
+                "height": [40, 400, 4000],
+                "area_if_undiluted": [40, 400, 4000],
+            },
+        ),
+        "T_1": pd.DataFrame(
+            index=pd.Index(["phenol", "naphthalene", "dodecane"], name="T_1"),
             data={
-                'iupac_name': ['n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.'],
-                'retention_time': [6.027, 38.123, 41.729, 42.157, 45.253, 45.369],
-                'area': [16741, 49508, 27798, 1415205, 519476, 1724814],
-                'height': [13451, 18415, 9132, 484890, 180850, 501749],
-                'area_if_undiluted': [2092625, 6188500, 3474750, 176900625, 64934500, 215601750],
-            }),
-        'Ader_2': pd.DataFrame(
-            index=pd.Index(['unidentified', 'myristic acid, tms derivative', 'palmitelaidic acid, tms derivative', 'palmitic acid, tms derivative', '9,12-octadecadienoic acid (z,z)-, tms derivative', '9-octadecenoic acid, (z)-, tms derivative'], name='Ader_2'),
+                "iupac_name": ["n.a.", "n.a.", "n.a."],
+                "retention_time": [13.703, 20.942, 21.426],
+                "area": [20, 50, 500],
+                "height": [20, 50, 500],
+                "area_if_undiluted": [20, 50, 500],
+            },
+        ),
+        "T_2": pd.DataFrame(
+            index=pd.Index(["phenol", "naphthalene", "dodecane"], name="T_2"),
             data={
-                'iupac_name': ['n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.'],
-                'retention_time': [6.027, 38.125, 41.744, 42.161, 45.258, 45.37],
-                'area': [14698, 53613, 25213, 1402990, 605137, 1956560],
-                'height': [12802, 18373, 8775, 496504, 202599, 594688],
-                'area_if_undiluted': [1837250, 6701625, 3151625, 175373750, 75642125, 244570000],
-            }),
-        'B_1': pd.DataFrame(
-            index=pd.Index(['2-butanone', '2-cyclopenten-1-one, 2-methyl-', 'trans-2-pentenoic acid', '2,5-hexanedione', '1-hexene, 4,5-dimethyl-', 'phenol'], name='B_1'),
+                "iupac_name": ["n.a.", "n.a.", "n.a."],
+                "retention_time": [13.703, 20.942, 21.426],
+                "area": [10, 100, 1000],
+                "height": [10, 1000, 1000],
+                "area_if_undiluted": [10, 100, 1000],
+            },
+        ),
+        "T_3": pd.DataFrame(
+            index=pd.Index(["phenol", "naphthalene", "dodecane"], name="T_3"),
             data={
-                'iupac_name': ['n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.'],
-                'retention_time': [8.527, 10.507, 11.071, 11.486, 12.214, 13.687],
-                'area': [147566, 69223, 40376, 441077, 19522, 200947],
-                'height': [39393, 18515, 12132, 112797, 7194, 64421],
-                'area_if_undiluted': [147566, 69223, 40376, 441077, 19522, 200947],
-            }),
-        'B_2': pd.DataFrame(
-            index=pd.Index(['2-butanone', '2-cyclopenten-1-one, 2-methyl-', 'trans-2-pentenoic acid', '2,5-hexanedione', 'phenol'], name='B_2'),
-            data={
-                'iupac_name': ['n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.'],
-                'retention_time': [8.502, 10.474, 11.027, 11.456, 13.661],
-                'area': [181021, 64531, 35791, 472362, 228750],
-                'height': [44551, 19823, 12737, 120142, 75153],
-                'area_if_undiluted': [181021, 64531, 35791, 472362, 228750],
-            })
+                "iupac_name": ["n.a.", "n.a.", "n.a."],
+                "retention_time": [13.703, 20.942, 21.426],
+                "area": [0, 150, 1500],
+                "height": [0, 150, 1500],
+                "area_if_undiluted": [0, 150, 1500],
+            },
+        ),
     }
     return files
+
 
 @pytest.fixture
 def checked_is_files_deriv():
     is_files_deriv = {
-        'A_1': False, 'A_2': False, 'Ader_1': True,
-        'Ader_2': True, 'B_1': False, 'B_2': False
+        "S_1": False,
+        "S_2": False,
+        "T_1": False,
+        "T_2": False,
+        "T_3": False,
     }
     return is_files_deriv
 
+
+# fmt: off
 @pytest.fixture
 def checked_load_class_code_fractions():
     class_code_fractions = pd.DataFrame(
-        index=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79],
+        index=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80],
         data={
-            'classes': ['ester', 'ester_1', 'ester_2', 'ester_3', 'ester_4', 'ester_5', 'ester_6', 'carboxyl', 'ketone', 'ketone_1', 'ketone_2', 'ketone_3', 'ketone_4', 'ketone_5', 'ketone_6', 'ketone_7', 'ketone_8', 'ketone_9', 'ketone_10', 'ketone_11', 'ketone_12', 'ketone_13', 'ketone_14', 'ketone_15', 'ketone_16', 'ketone_17', 'ketone_18', 'ketone_19', 'ketone_20', 'ketone_21', 'ketone_22', 'ketone_23', 'ketone_24', 'ketone_25', 'ketone_26', 'ketone_27', 'aldehyde', 'ether', 'ether_1', 'ether_2', 'ether_3', 'ether_4', 'ether_5', 'ether_6', 'ether_7', 'ether_8', 'ether_9', 'ether_10', 'ether_11', 'ether_12', 'ether_13', 'ether_14', 'ether_15', 'ether_16', 'ether_17', 'ether_18', 'ether_19', 'ether_20', 'ether_21', 'ether_22', 'ether_23', 'ether_24', 'ether_25', 'ether_26', 'ether_27', 'alcohol', 'C-aliph', 'C-aliph_1', 'C-aliph_2', 'C-aliph_3', 'C-arom', 'C-arom_1', 'C-arom_2', 'N-aliph', 'N-aliph_1', 'N-aliph_3', 'N-arom', 'N-arom_2', 'O-arom', 'O-aliph'],
-            'codes': ['[CH0](=O)O[CH3]', '[CH0](=O)O[CH2]', '[CH0](=O)O[CH1]', '[CH0](=O)O[C]', '[CH0](=O)O[cH2]', '[CH0](=O)O[cH1]', '[CH0](=O)O[c]', '[CH0](=O)O', '[CH3]C(=O)[CH3]', '[CH3]C(=O)[CH2]', '[CH3]C(=O)[CH]', '[CH3]C(=O)[C]', '[CH3]C(=O)[cH2]', '[CH3]C(=O)[cH]', '[CH3]C(=O)[c]', '[CH2]C(=O)[CH2]', '[CH2]C(=O)[CH]', '[CH2]C(=O)[C]', '[CH2]C(=O)[cH2]', '[CH2]C(=O)[cH]', '[CH2]C(=O)[c]', '[CH]C(=O)[CH]', '[CH]C(=O)[C]', '[CH]C(=O)[cH2]', '[CH]C(=O)[cH]', '[CH]C(=O)[c]', '[C]C(=O)[C]', '[C]C(=O)[cH2]', '[C]C(=O)[cH]', '[C]C(=O)[c]', '[cH2]C(=O)[cH2]', '[cH2]C(=O)[cH]', '[cH2]C(=O)[c]', '[cH]C(=O)[cH]', '[cH]C(=O)[c]', '[c]C(=O)[c]', '[CH]=O', '[CH3]O[CH3]', '[CH3]O[CH2]', '[CH3]O[CH]', '[CH3]O[C]', '[CH3]O[cH2]', '[CH3]O[cH]', '[CH3]O[c]', '[CH2]O[CH2]', '[CH2]O[CH]', '[CH2]O[C]', '[CH2]O[cH2]', '[CH2]O[cH]', '[CH2]O[c]', '[CH]O[CH]', '[CH]O[C]', '[CH]O[cH2]', '[CH]O[cH]', '[CH]O[c]', '[C]O[C]', '[C]O[cH2]', '[C]O[cH]', '[C]O[c]', '[cH2]O[cH2]', '[cH2]O[cH]', '[cH2]O[c]', '[cH]O[cH]', '[cH]O[c]', '[c]O[c]', '[OH1]', '[CH3]', '[CH2]', '[CH1]', '[C]', '[cH2]', '[cH1]', '[c]', '[NH2]', '[NH1]', '[NH0]', '[nH1]', '[n]', '[o]', '[O]'],
-            'mfs': [59.044, 58.035999999999994, 57.028, 56.019999999999996, 58.035999999999994, 57.028, 56.019999999999996, 45.017, 58.080000000000005, 57.072, 56.06400000000001, 55.056000000000004, 57.072, 56.06400000000001, 55.056000000000004, 56.06400000000001, 55.056000000000004, 57.072, 56.06400000000001, 55.056000000000004, 54.048, 54.048, 53.040000000000006, 55.056000000000004, 54.048, 53.040000000000006, 52.032000000000004, 54.048, 53.040000000000006, 52.032000000000004, 56.06400000000001, 55.056000000000004, 54.048, 54.048, 53.040000000000006, 52.032000000000004, 29.017999999999997, 46.069, 45.061, 44.053, 43.045, 45.061, 44.053, 43.045, 44.053, 43.045, 45.061, 44.053, 43.045, 42.037, 42.037, 41.029, 43.045, 42.037, 41.029, 40.021, 42.037, 41.029, 40.021, 44.053, 43.045, 42.037, 42.037, 41.029, 40.021, 17.007, 15.035, 14.027, 13.018999999999998, 12.011, 14.027, 13.018999999999998, 12.011, 16.023, 15.015, 14.007, 15.015, 14.007, 15.999, 15.999],
+            'classes': ['ester', 'ester_1', 'ester_2', 'ester_3', 'ester_4', 'ester_5', 'ester_6', 'carboxyl', 'ketone', 'ketone_1', 'ketone_2', 'ketone_3', 'ketone_4', 'ketone_5', 'ketone_6', 'ketone_7', 'ketone_8', 'ketone_9', 'ketone_10', 'ketone_11', 'ketone_12', 'ketone_13', 'ketone_14', 'ketone_15', 'ketone_16', 'ketone_17', 'ketone_18', 'ketone_19', 'ketone_20', 'ketone_21', 'ketone_22', 'ketone_23', 'ketone_24', 'ketone_25', 'ketone_26', 'ketone_27', 'aldehyde', 'ether', 'ether_1', 'ether_2', 'ether_3', 'ether_4', 'ether_5', 'ether_6', 'ether_7', 'ether_8', 'ether_9', 'ether_10', 'ether_11', 'ether_12', 'ether_13', 'ether_14', 'ether_15', 'ether_16', 'ether_17', 'ether_18', 'ether_19', 'ether_20', 'ether_21', 'ether_22', 'ether_23', 'ether_24', 'ether_25', 'ether_26', 'ether_27', 'alcohol', 'C-aliph', 'C-aliph_1', 'C-aliph_2', 'C-aliph_3', 'C-arom', 'C-arom_1', 'C-arom_2', 'N-aliph', 'N-aliph_1', 'N-aliph_3', 'N-arom', 'N-arom_2', 'O-arom', 'O-aliph', 'Cl'],
+            'codes': ['[CH0](=O)O[CH3]', '[CH0](=O)O[CH2]', '[CH0](=O)O[CH1]', '[CH0](=O)O[C]', '[CH0](=O)O[cH2]', '[CH0](=O)O[cH1]', '[CH0](=O)O[c]', '[CH0](=O)O', '[CH3]C(=O)[CH3]', '[CH3]C(=O)[CH2]', '[CH3]C(=O)[CH]', '[CH3]C(=O)[C]', '[CH3]C(=O)[cH2]', '[CH3]C(=O)[cH]', '[CH3]C(=O)[c]', '[CH2]C(=O)[CH2]', '[CH2]C(=O)[CH]', '[CH2]C(=O)[C]', '[CH2]C(=O)[cH2]', '[CH2]C(=O)[cH]', '[CH2]C(=O)[c]', '[CH]C(=O)[CH]', '[CH]C(=O)[C]', '[CH]C(=O)[cH2]', '[CH]C(=O)[cH]', '[CH]C(=O)[c]', '[C]C(=O)[C]', '[C]C(=O)[cH2]', '[C]C(=O)[cH]', '[C]C(=O)[c]', '[cH2]C(=O)[cH2]', '[cH2]C(=O)[cH]', '[cH2]C(=O)[c]', '[cH]C(=O)[cH]', '[cH]C(=O)[c]', '[c]C(=O)[c]', '[CH]=O', '[CH3]O[CH3]', '[CH3]O[CH2]', '[CH3]O[CH]', '[CH3]O[C]', '[CH3]O[cH2]', '[CH3]O[cH]', '[CH3]O[c]', '[CH2]O[CH2]', '[CH2]O[CH]', '[CH2]O[C]', '[CH2]O[cH2]', '[CH2]O[cH]', '[CH2]O[c]', '[CH]O[CH]', '[CH]O[C]', '[CH]O[cH2]', '[CH]O[cH]', '[CH]O[c]', '[C]O[C]', '[C]O[cH2]', '[C]O[cH]', '[C]O[c]', '[cH2]O[cH2]', '[cH2]O[cH]', '[cH2]O[c]', '[cH]O[cH]', '[cH]O[c]', '[c]O[c]', '[OH1]', '[CH3]', '[CH2]', '[CH1]', '[C]', '[cH2]', '[cH1]', '[c]', '[NH2]', '[NH1]', '[NH0]', '[nH1]', '[n]', '[o]', '[O]', '[Cl]'],
+            'mfs': [59.044, 58.035999999999994, 57.028, 56.019999999999996, 58.035999999999994, 57.028, 56.019999999999996, 45.017, 58.080000000000005, 57.072, 56.06400000000001, 55.056000000000004, 57.072, 56.06400000000001, 55.056000000000004, 56.06400000000001, 55.056000000000004, 57.072, 56.06400000000001, 55.056000000000004, 54.048, 54.048, 53.040000000000006, 55.056000000000004, 54.048, 53.040000000000006, 52.032000000000004, 54.048, 53.040000000000006, 52.032000000000004, 56.06400000000001, 55.056000000000004, 54.048, 54.048, 53.040000000000006, 52.032000000000004, 29.017999999999997, 46.069, 45.061, 44.053, 43.045, 45.061, 44.053, 43.045, 44.053, 43.045, 45.061, 44.053, 43.045, 42.037, 42.037, 41.029, 43.045, 42.037, 41.029, 40.021, 42.037, 41.029, 40.021, 44.053, 43.045, 42.037, 42.037, 41.029, 40.021, 17.007, 15.035, 14.027, 13.018999999999998, 12.011, 14.027, 13.018999999999998, 12.011, 16.023, 15.015, 14.007, 15.015, 14.007, 15.999, 15.999, 35.45],
         }
     )
     return class_code_fractions
@@ -193,29 +201,181 @@ def checked_load_calibrations():
                 'Area 5': [np.nan, np.nan, np.nan, 2957268.0, 3164919.0, 741540.0, 5345977.0],
                 'Area 6': [np.nan, np.nan, np.nan, 11730886.0, 12451729.0, 3975200.0, 19779576.0],
             }
-        ),
-        'deriv_calibration': pd.DataFrame(
-            index=pd.Index(['benzoic acid', 'hexadecanoic acid', '(9z,12z)-octadeca-9,12-dienoic acid', '9-octadecenoic acid, (e)-', 'phenol', '4-oxopentanoic acid', 'benzene-1,2-diol'], name='comp_name'),
-            data={
-                'iupac_name': ['n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.'],
-                'MW': [122.1213, 256.4241, 280.4455, 282.4614, 94.1112, 116.1152, 110.1106],
-                'PPM 1': [np.nan, 5.0, 5.0, 5.0, np.nan, 5.0, 5.0],
-                'PPM 2': [np.nan, 10.0, 10.0, 10.0, np.nan, 10.0, 10.0],
-                'PPM 3': [np.nan, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0],
-                'PPM 4': [np.nan, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0],
-                'PPM 5': [30, 30, 30, 30, 25, 25, 25],
-                'PPM 6': [50, 50, 50, 50, 30, 30, 30],
-                'Area 1': [np.nan, 403058.0, 126644.0, 467088.0, np.nan, 48330.0, 184752.0],
-                'Area 2': [np.nan, 570479.0, 183307.0, 741971.0, np.nan, 206224.0, 729379.0],
-                'Area 3': [np.nan, 694901.0, 241591.0, 953554.0, 17168.0, 620353.0, 1607583.0],
-                'Area 4': [np.nan, 936570.0, 350170.0, 1408563.0, 21329.0, 885337.0, 2232039.0],
-                'Area 5': [73458, 1474014, 475205, 2476003, 21557, 1096645, 2972508],
-                'Area 6': [113812, 2605959, 824267, 4300414, 71706, 1394486, 3629582],
-                'CAS': ['65-85-0', '57-10-3', '60-33-3', '112-79-8', '108-95-2', '123-76-2', '120-80-9'],
-            }
         )
     }
     return calibrations
+# fmt: on
+# Project class testing
+# @pytest.fixture
+# def gcms() -> Project:
+
+#     folder_path: plib.Path = plib.Path(
+#         plib.Path(__file__).parent.parent, "tests/data_for_testing/"
+#     )
+#     Project.set_folder_path(folder_path)
+#     Project.set_auto_save_to_excel(False)
+#     return Project()
+
+
+# fmt: off
+
+
+# @pytest.fixture
+# def checked_files_info():
+#     files_info = pd.DataFrame(
+#         index=pd.Index(['A_1', 'A_2', 'Ader_1', 'Ader_2', 'B_1', 'B_2'], name='filename'),
+#         data={
+#             'samplename': ['A', 'A', 'Ader', 'Ader', 'B', 'B'],
+#             'derivatized': [False, False, True, True, False, False],
+#             'dilution_factor': [25, 25, 125, 125, 1, 1],
+#             'total_sample_conc_in_vial_mg_L': [560.0000000000001, 560.0000000000001, 112.0, 112.0, 2800.0, 2800.0],
+#             'sample_yield_on_feedstock_basis_fr': [0.45, 0.46, 0.47, 0.48, 0.49, 0.5],
+#             'calibration_file': ['calibration', 'calibration', 'deriv_calibration', 'deriv_calibration', 'calibration', 'calibration'],
+#             }
+#     )
+#     return files_info
+
+# @pytest.fixture
+# def checked_created_files_info():
+#     created_files_info = pd.DataFrame(
+#         index=pd.Index(['A_1', 'A_2', 'Ader_1', 'Ader_2', 'B_1', 'B_2'], name='filename'),
+#         data={
+#             'samplename': ['A', 'A', 'Ader', 'Ader', 'B', 'B'],
+#             'replicate_number': ['1', '2', '1', '2', '1', '2'],
+#             'derivatized': [False, False, False, False, False, False],
+#             'calibration_file': [False, False, False, False, False, False],
+#             'dilution_factor': [1, 1, 1, 1, 1, 1],
+#             'total_sample_conc_in_vial_mg_L': [1, 1, 1, 1, 1, 1],
+#             'sample_yield_on_feedstock_basis_fr': [1, 1, 1, 1, 1, 1],
+#         }
+#     )
+#     return created_files_info
+
+
+# @pytest.fixture
+# def checked_files():
+#     files = {
+#         'A_1': pd.DataFrame(
+#             index=pd.Index(['unidentified', 'tetradecanoic acid', 'oxacycloheptadecan-2-one', 'n-hexadecanoic acid', '9,12-octadecadienoic acid (z,z)-', 'oleic acid'], name='A_1'),
+#             data={
+#                 'iupac_name': ['n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.'],
+#                 'retention_time': [6.025, 36.163, 40.052, 40.492, 43.847, 43.986],
+#                 'area': [23386, 44389, 15068, 1878180, 1456119, 6379752],
+#                 'height': [24797, 15019, 5705, 493759, 339605, 1147599],
+#                 'area_if_undiluted': [584650, 1109725, 376700, 46954500, 36402975, 159493800],
+#             }),
+#         'A_2': pd.DataFrame(
+#             index=pd.Index(['unidentified', 'n-decanoic acid', 'tetradecanoic acid', 'oxacycloheptadecan-2-one', 'n-hexadecanoic acid', '9,12-octadecadienoic acid (z,z)-', 'oleic acid'], name='A_2'),
+#             data={
+#                 'iupac_name': ['n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.'],
+#                 'retention_time': [6.025, 26.284, 36.158, 40.041, 40.494, 43.847, 43.988],
+#                 'area': [25493, 10952, 50650, 21294, 1656756, 1371069, 6394708],
+#                 'height': [25716, 4259, 14520, 6739, 461942, 324690, 1138647],
+#                 'area_if_undiluted': [637325, 273800, 1266250, 532350, 41418900, 34276725, 159867700],
+#             }),
+#         'Ader_1': pd.DataFrame(
+#             index=pd.Index(['unidentified', 'myristic acid, tms derivative', 'palmitelaidic acid, tms derivative', 'palmitic acid, tms derivative', '9,12-octadecadienoic acid (z,z)-, tms derivative', '9-octadecenoic acid, (z)-, tms derivative'], name='Ader_1'),
+#             data={
+#                 'iupac_name': ['n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.'],
+#                 'retention_time': [6.027, 38.123, 41.729, 42.157, 45.253, 45.369],
+#                 'area': [16741, 49508, 27798, 1415205, 519476, 1724814],
+#                 'height': [13451, 18415, 9132, 484890, 180850, 501749],
+#                 'area_if_undiluted': [2092625, 6188500, 3474750, 176900625, 64934500, 215601750],
+#             }),
+#         'Ader_2': pd.DataFrame(
+#             index=pd.Index(['unidentified', 'myristic acid, tms derivative', 'palmitelaidic acid, tms derivative', 'palmitic acid, tms derivative', '9,12-octadecadienoic acid (z,z)-, tms derivative', '9-octadecenoic acid, (z)-, tms derivative'], name='Ader_2'),
+#             data={
+#                 'iupac_name': ['n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.'],
+#                 'retention_time': [6.027, 38.125, 41.744, 42.161, 45.258, 45.37],
+#                 'area': [14698, 53613, 25213, 1402990, 605137, 1956560],
+#                 'height': [12802, 18373, 8775, 496504, 202599, 594688],
+#                 'area_if_undiluted': [1837250, 6701625, 3151625, 175373750, 75642125, 244570000],
+#             }),
+#         'B_1': pd.DataFrame(
+#             index=pd.Index(['2-butanone', '2-cyclopenten-1-one, 2-methyl-', 'trans-2-pentenoic acid', '2,5-hexanedione', '1-hexene, 4,5-dimethyl-', 'phenol'], name='B_1'),
+#             data={
+#                 'iupac_name': ['n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.'],
+#                 'retention_time': [8.527, 10.507, 11.071, 11.486, 12.214, 13.687],
+#                 'area': [147566, 69223, 40376, 441077, 19522, 200947],
+#                 'height': [39393, 18515, 12132, 112797, 7194, 64421],
+#                 'area_if_undiluted': [147566, 69223, 40376, 441077, 19522, 200947],
+#             }),
+#         'B_2': pd.DataFrame(
+#             index=pd.Index(['2-butanone', '2-cyclopenten-1-one, 2-methyl-', 'trans-2-pentenoic acid', '2,5-hexanedione', 'phenol'], name='B_2'),
+#             data={
+#                 'iupac_name': ['n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.'],
+#                 'retention_time': [8.502, 10.474, 11.027, 11.456, 13.661],
+#                 'area': [181021, 64531, 35791, 472362, 228750],
+#                 'height': [44551, 19823, 12737, 120142, 75153],
+#                 'area_if_undiluted': [181021, 64531, 35791, 472362, 228750],
+#             })
+#     }
+#     return files
+
+# @pytest.fixture
+# def checked_is_files_deriv():
+#     is_files_deriv = {
+#         'A_1': False, 'A_2': False, 'Ader_1': True,
+#         'Ader_2': True, 'B_1': False, 'B_2': False
+#     }
+#     return is_files_deriv
+
+# @pytest.fixture
+# def checked_load_class_code_fractions():
+#     class_code_fractions = pd.DataFrame(
+#         index=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79],
+#         data={
+#             'classes': ['ester', 'ester_1', 'ester_2', 'ester_3', 'ester_4', 'ester_5', 'ester_6', 'carboxyl', 'ketone', 'ketone_1', 'ketone_2', 'ketone_3', 'ketone_4', 'ketone_5', 'ketone_6', 'ketone_7', 'ketone_8', 'ketone_9', 'ketone_10', 'ketone_11', 'ketone_12', 'ketone_13', 'ketone_14', 'ketone_15', 'ketone_16', 'ketone_17', 'ketone_18', 'ketone_19', 'ketone_20', 'ketone_21', 'ketone_22', 'ketone_23', 'ketone_24', 'ketone_25', 'ketone_26', 'ketone_27', 'aldehyde', 'ether', 'ether_1', 'ether_2', 'ether_3', 'ether_4', 'ether_5', 'ether_6', 'ether_7', 'ether_8', 'ether_9', 'ether_10', 'ether_11', 'ether_12', 'ether_13', 'ether_14', 'ether_15', 'ether_16', 'ether_17', 'ether_18', 'ether_19', 'ether_20', 'ether_21', 'ether_22', 'ether_23', 'ether_24', 'ether_25', 'ether_26', 'ether_27', 'alcohol', 'C-aliph', 'C-aliph_1', 'C-aliph_2', 'C-aliph_3', 'C-arom', 'C-arom_1', 'C-arom_2', 'N-aliph', 'N-aliph_1', 'N-aliph_3', 'N-arom', 'N-arom_2', 'O-arom', 'O-aliph'],
+#             'codes': ['[CH0](=O)O[CH3]', '[CH0](=O)O[CH2]', '[CH0](=O)O[CH1]', '[CH0](=O)O[C]', '[CH0](=O)O[cH2]', '[CH0](=O)O[cH1]', '[CH0](=O)O[c]', '[CH0](=O)O', '[CH3]C(=O)[CH3]', '[CH3]C(=O)[CH2]', '[CH3]C(=O)[CH]', '[CH3]C(=O)[C]', '[CH3]C(=O)[cH2]', '[CH3]C(=O)[cH]', '[CH3]C(=O)[c]', '[CH2]C(=O)[CH2]', '[CH2]C(=O)[CH]', '[CH2]C(=O)[C]', '[CH2]C(=O)[cH2]', '[CH2]C(=O)[cH]', '[CH2]C(=O)[c]', '[CH]C(=O)[CH]', '[CH]C(=O)[C]', '[CH]C(=O)[cH2]', '[CH]C(=O)[cH]', '[CH]C(=O)[c]', '[C]C(=O)[C]', '[C]C(=O)[cH2]', '[C]C(=O)[cH]', '[C]C(=O)[c]', '[cH2]C(=O)[cH2]', '[cH2]C(=O)[cH]', '[cH2]C(=O)[c]', '[cH]C(=O)[cH]', '[cH]C(=O)[c]', '[c]C(=O)[c]', '[CH]=O', '[CH3]O[CH3]', '[CH3]O[CH2]', '[CH3]O[CH]', '[CH3]O[C]', '[CH3]O[cH2]', '[CH3]O[cH]', '[CH3]O[c]', '[CH2]O[CH2]', '[CH2]O[CH]', '[CH2]O[C]', '[CH2]O[cH2]', '[CH2]O[cH]', '[CH2]O[c]', '[CH]O[CH]', '[CH]O[C]', '[CH]O[cH2]', '[CH]O[cH]', '[CH]O[c]', '[C]O[C]', '[C]O[cH2]', '[C]O[cH]', '[C]O[c]', '[cH2]O[cH2]', '[cH2]O[cH]', '[cH2]O[c]', '[cH]O[cH]', '[cH]O[c]', '[c]O[c]', '[OH1]', '[CH3]', '[CH2]', '[CH1]', '[C]', '[cH2]', '[cH1]', '[c]', '[NH2]', '[NH1]', '[NH0]', '[nH1]', '[n]', '[o]', '[O]'],
+#             'mfs': [59.044, 58.035999999999994, 57.028, 56.019999999999996, 58.035999999999994, 57.028, 56.019999999999996, 45.017, 58.080000000000005, 57.072, 56.06400000000001, 55.056000000000004, 57.072, 56.06400000000001, 55.056000000000004, 56.06400000000001, 55.056000000000004, 57.072, 56.06400000000001, 55.056000000000004, 54.048, 54.048, 53.040000000000006, 55.056000000000004, 54.048, 53.040000000000006, 52.032000000000004, 54.048, 53.040000000000006, 52.032000000000004, 56.06400000000001, 55.056000000000004, 54.048, 54.048, 53.040000000000006, 52.032000000000004, 29.017999999999997, 46.069, 45.061, 44.053, 43.045, 45.061, 44.053, 43.045, 44.053, 43.045, 45.061, 44.053, 43.045, 42.037, 42.037, 41.029, 43.045, 42.037, 41.029, 40.021, 42.037, 41.029, 40.021, 44.053, 43.045, 42.037, 42.037, 41.029, 40.021, 17.007, 15.035, 14.027, 13.018999999999998, 12.011, 14.027, 13.018999999999998, 12.011, 16.023, 15.015, 14.007, 15.015, 14.007, 15.999, 15.999],
+#         }
+#     )
+#     return class_code_fractions
+
+# @pytest.fixture
+# def checked_load_calibrations():
+#     calibrations = {
+#         'calibration': pd.DataFrame(
+#             index=pd.Index(['phenol', '2-methylcyclopent-2-en-1-one', '2,4,5-trichlorophenol', 'tetradecanoic acid', 'hexadecanoic acid', '(9z,12z)-octadeca-9,12-dienoic acid', '(z)-octadec-9-enoic acid'], name='comp_name'),
+#             data={
+#                 'iupac_name': ['n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.'],
+#                 'MW': [94.11, 96.1271, 197.4, 228.3709, 256.4241, 280.4455, 282.4614],
+#                 'PPM 1': [5.0, 10.0, 5.0, 10.0, 10.0, np.nan, 10.0],
+#                 'PPM 2': [10, 20, 10, 20, 20, 20, 20],
+#                 'PPM 3': [20, 30, 20, 35, 35, 35, 35],
+#                 'PPM 4': [50.0, 50.0, 50.0, 50.0, 50.0, np.nan, 50.0],
+#                 'PPM 5': [np.nan, np.nan, np.nan, 100.0, 100.0, 100.0, 100.0],
+#                 'PPM 6': [np.nan, np.nan, np.nan, 300.0, 300.0, 300.0, 300.0],
+#                 'Area 1': [135884.0, 175083.0, 155710.0, 70675.0, 51545.0, np.nan, 31509.0],
+#                 'Area 2': [304546, 759316, 343277, 203215, 130834, 22338, 133847],
+#                 'Area 3': [678618, 1070146, 805095, 500430, 361070, 63841, 551470],
+#                 'Area 4': [1866918.0, 1928385.0, 2302730.0, 469543.0, 430809.0, np.nan, 494928.0],
+#                 'Area 5': [np.nan, np.nan, np.nan, 2957268.0, 3164919.0, 741540.0, 5345977.0],
+#                 'Area 6': [np.nan, np.nan, np.nan, 11730886.0, 12451729.0, 3975200.0, 19779576.0],
+#             }
+#         ),
+#         'deriv_calibration': pd.DataFrame(
+#             index=pd.Index(['benzoic acid', 'hexadecanoic acid', '(9z,12z)-octadeca-9,12-dienoic acid', '9-octadecenoic acid, (e)-', 'phenol', '4-oxopentanoic acid', 'benzene-1,2-diol'], name='comp_name'),
+#             data={
+#                 'iupac_name': ['n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.', 'n.a.'],
+#                 'MW': [122.1213, 256.4241, 280.4455, 282.4614, 94.1112, 116.1152, 110.1106],
+#                 'PPM 1': [np.nan, 5.0, 5.0, 5.0, np.nan, 5.0, 5.0],
+#                 'PPM 2': [np.nan, 10.0, 10.0, 10.0, np.nan, 10.0, 10.0],
+#                 'PPM 3': [np.nan, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0],
+#                 'PPM 4': [np.nan, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0],
+#                 'PPM 5': [30, 30, 30, 30, 25, 25, 25],
+#                 'PPM 6': [50, 50, 50, 50, 30, 30, 30],
+#                 'Area 1': [np.nan, 403058.0, 126644.0, 467088.0, np.nan, 48330.0, 184752.0],
+#                 'Area 2': [np.nan, 570479.0, 183307.0, 741971.0, np.nan, 206224.0, 729379.0],
+#                 'Area 3': [np.nan, 694901.0, 241591.0, 953554.0, 17168.0, 620353.0, 1607583.0],
+#                 'Area 4': [np.nan, 936570.0, 350170.0, 1408563.0, 21329.0, 885337.0, 2232039.0],
+#                 'Area 5': [73458, 1474014, 475205, 2476003, 21557, 1096645, 2972508],
+#                 'Area 6': [113812, 2605959, 824267, 4300414, 71706, 1394486, 3629582],
+#                 'CAS': ['65-85-0', '57-10-3', '60-33-3', '112-79-8', '108-95-2', '123-76-2', '120-80-9'],
+#             }
+#         )
+#     }
+#     return calibrations
 
 @pytest.fixture
 def checked_is_calibrations_deriv():
