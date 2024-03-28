@@ -1,15 +1,16 @@
 # Import necessary libraries
 import pathlib as plib  # Used for handling file and directory paths
-from gcms_data_analysis import (
-    Project,
-)  # Import the Project class from the gcms_data_analysis package
+from gcms_data_analysis import Project
+from gcms_data_analysis.plotting import plot_ave_std
 
 # Define the folder path where your data is located. Change this path to where you've stored your data files.
 # folder_path = plib.Path(plib.Path(__file__).parent, "example\data")
 folder_path = plib.Path(
     r"C:\Users\mp933\OneDrive - Cornell University\Python\gcms_data_analysis\example\data"
 )
-
+# folder_path: plib.Path = plib.Path(
+#     r"C:\Users\mp933\OneDrive - Cornell University\Python\GCMS\NNDNDD"
+# )
 # Set global configurations for the Project class.
 # These configurations affect all instances of the class.
 Project.set_folder_path(
@@ -17,7 +18,7 @@ Project.set_folder_path(
 )  # Set the base folder path for the project's data files
 Project.set_plot_grid(False)  # Disable grid lines in plots for a cleaner look
 Project.set_plot_font("Sans")  # Set the font style for plots to 'Sans'
-
+Project.set_auto_save_to_excel(False)
 # Initialize a Project instance to manage and analyze GCMS data
 gcms = Project()
 
@@ -41,8 +42,8 @@ list_of_all_compounds = gcms.create_list_of_all_compounds()
 list_of_all_deriv_compounds = gcms.create_list_of_all_deriv_compounds()
 
 # Load properties for standard and derivatized compounds from provided files
-compounds_properties = gcms.load_compounds_properties()
-deriv_compounds_properties = gcms.load_deriv_compounds_properties()
+compounds_properties = gcms.create_compounds_properties()
+deriv_compounds_properties = gcms.create_deriv_compounds_properties()
 
 # Flag indicating whether new compounds have been added, triggering a need to regenerate properties data
 new_files_with_new_compounds_added = False
@@ -56,7 +57,7 @@ files, is_files_deriv = gcms.apply_calibration_to_files()
 # Extract specific files for detailed analysis or further operations
 f11, f22, f33 = files["A_1"], files["Ader_1"], files["B_1"]
 
-# Add statistical information to the files_info DataFrame, such as mean, median, and standard deviation for each file
+# # Add statistical information to the files_info DataFrame, such as mean, median, and standard deviation for each file
 files_info = gcms.add_stats_to_files_info()
 
 # Create a samples_info DataFrame without applying calibration data, for initial analysis
@@ -90,7 +91,8 @@ agg_samples_fr, agg_samples_fr_std = gcms.create_samples_param_aggrrep(
 # Plotting results based on the generated reports, allowing for visual comparison of average values and standard deviations
 # Plot results for individual files or samples based
 
-gcms.plot_ave_std(
+plot_ave_std(
+    gcms,
     param="fraction_of_sample_fr",
     min_y_thresh=0,
     files_or_samples="files",
@@ -98,7 +100,8 @@ gcms.plot_ave_std(
     only_samples_to_plot=["A_1", "A_2", "Ader_1", "Ader_2"],  # y_lim=[0, 5000]
 )
 # plot results bases on aggreport
-gcms.plot_ave_std(
+plot_ave_std(
+    gcms,
     param="fraction_of_sample_fr",
     aggr=True,
     files_or_samples="files",
@@ -107,14 +110,16 @@ gcms.plot_ave_std(
     color_palette="Set2",
 )
 
-gcms.plot_ave_std(
+plot_ave_std(
+    gcms,
     param="fraction_of_sample_fr",
     min_y_thresh=0,
     legend_location="outside",
     only_samples_to_plot=["A", "Ader"],  # y_lim=[0, 5000]
 )
 # plot results bases on aggreport
-gcms.plot_ave_std(
+plot_ave_std(
+    gcms,
     param="fraction_of_sample_fr",
     aggr=True,
     min_y_thresh=0.01,
@@ -123,43 +128,43 @@ gcms.plot_ave_std(
 )
 
 # %%
-import pickle
+# import pickle
 
-folder_path: plib.Path = plib.Path(r"C:\Users\mp933\Desktop\New folder")
-pickle_path: plib.Path = plib.Path(folder_path, "pickle_object.pkl")
-with open(pickle_path, "wb") as output_file:
-    pickle.dump(gcms, output_file)
+# folder_path: plib.Path = plib.Path(r"C:\Users\mp933\Desktop\New folder")
+# pickle_path: plib.Path = plib.Path(folder_path, "pickle_object.pkl")
+# with open(pickle_path, "wb") as output_file:
+#     pickle.dump(gcms, output_file)
 # %%
-import pickle
-import pathlib as plib  # Used for handling file and directory paths
-from gcms_data_analysis import (
-    Project,
-)  # Import the Project class from the gcms_data_analysis package
+# import pickle
+# import pathlib as plib  # Used for handling file and directory paths
+# from gcms_data_analysis import (
+#     Project,
+# )  # Import the Project class from the gcms_data_analysis package
 
-folder_path: plib.Path = plib.Path(r"C:\Users\mp933\Desktop\New folder")
-pickle_path: plib.Path = plib.Path(folder_path, "pickle_object.pkl")
-with open(pickle_path, "rb") as input_file:
-    gcms: Project = pickle.load(input_file)
-from gcms_data_analysis.plotting import plot_pave_std
+# folder_path: plib.Path = plib.Path(r"C:\Users\mp933\Desktop\New folder")
+# pickle_path: plib.Path = plib.Path(folder_path, "pickle_object.pkl")
+# with open(pickle_path, "rb") as input_file:
+#     gcms: Project = pickle.load(input_file)
+# from gcms_data_analysis.plotting import plot_pave_std
 
-# %%
-myfig = plot_pave_std(
-    gcms,
-    files_or_samples="files",
-    width=12,
-    height=5,
-    legend_location="outside",
-    y_lim=[0, 100],
-)
-# %%
-myfig = plot_pave_std(
-    gcms,
-    files_or_samples="samples",
-    width=6,
-    height=6,
-    legend_location="best",
-    y_lim=[0, 100],
-    min_y_thresh=10,
-)
+# # %%
+# myfig = plot_pave_std(
+#     gcms,
+#     files_or_samples="files",
+#     width=12,
+#     height=5,
+#     legend_location="outside",
+#     y_lim=[0, 100],
+# )
+# # %%
+# myfig = plot_pave_std(
+#     gcms,
+#     files_or_samples="samples",
+#     width=6,
+#     height=6,
+#     legend_location="best",
+#     y_lim=[0, 100],
+#     min_y_thresh=10,
+# )
 
-# %%
+# # %%

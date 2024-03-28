@@ -48,11 +48,12 @@ compounds = [
     "n-hexadecanoic acid",  # different names same compounds
     "phenol",  # ring
     "phenol",  # repeated compound
+    "carbolic acid",  # same iupac but different comp_name
     "2,4,5-trichlorophenol",  # clorine (udentified)
     "phenoxytrimethylsilane",  # silane (not listed in fg)
     "bromophenol",  # Br not listed
     "9-octadecenoic acid, 1,2,3-propanetriyl ester, (e,e,e)-",  # large compound
-    "wrong_name",  # test for legit string that gives no pcp result
+    "name_not_on_pcp",  # test for legit string that gives no pcp result
     " ",  # wrong entry or datatype
     None,
     False,
@@ -62,9 +63,7 @@ compounds = [
 list_of_compound_properties: list[pd.DataFrame] = []
 for compound in compounds:
     print(compound)
-    n2p = name_to_properties(
-        compound, dict_cl_to_codes, dict_cl_to_mass_fractions, None
-    )
+    n2p = name_to_properties(compound, dict_cl_to_codes, dict_cl_to_mass_fractions)
     list_of_compound_properties.append(n2p)
 
 # %%
@@ -78,4 +77,10 @@ for compound in compounds:
         to_check,
     )
 
+to_check.to_excel(
+    plib.Path(
+        r"C:\Users\mp933\OneDrive - Cornell University\Python\gcms_data_analysis\tests\data_name_to_properties",
+        "checked_compounds_properties.xlsx",
+    )
+)
 # %%

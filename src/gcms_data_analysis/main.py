@@ -13,13 +13,18 @@ from matplotlib.transforms import blended_transform_factory
 import seaborn as sns
 import ele
 import pubchempy as pcp
+from rdkit import Chem
+from rdkit.Chem import DataStructs
+from rdkit.Chem import rdmolops
+from rdkit.Chem.AllChem import (
+    GetMorganFingerprintAsBitVect,
+)  # pylint: disable=no-name-in-module
 from gcms_data_analysis.fragmenter import Fragmenter
 
 
 def get_compound_from_pubchempy(comp_name: str) -> pcp.Compound:
-    if not isinstance(comp_name, str):
-        return None
-    if comp_name == " " or comp_name == "":
+    if not isinstance(comp_name, str) or comp_name.isspace():
+        print(f"WARNING get_compound_from_pubchempy got an invalid {comp_name =}")
         return None
     cond = True
     while cond:  # to deal with HTML issues on server sides (timeouts)
@@ -48,9 +53,19 @@ def _order_columns_in_compounds_properties(
 ) -> pd.DataFrame | None:
     if unsorted_df is None:
         return None
+    priority_cols: list[str] = [
+        "iupac_name",
+        "underiv_comp_name",
+        "molecular_formula",
+        "canonical_smiles",
+        "molecular_weight",
+        "xlogp",
+    ]
 
     # Define a custom sort key function
     def sort_key(col):
+        if col in priority_cols:
+            return (-1, priority_cols.index(col))
         if col.startswith("el_mf"):
             return (2, col)
         elif col.startswith("el_"):
@@ -76,10 +91,10 @@ def name_to_properties(
     comp_name: str,
     dict_classes_to_codes: dict[str:str],
     dict_classes_to_mass_fractions: dict[str:float],
-    df: pd.DataFrame | None = None,
+    df: pd.DataFrame = pd.DataFrame(),
     precision_sum_elements: float = 0.05,
     precision_sum_functional_group: float = 0.05,
-) -> pd.DataFrame | None:
+) -> pd.DataFrame:
     """
     used to retrieve chemical properties of the compound indicated by the
     comp_name and to store those properties in the df
@@ -106,25 +121,28 @@ def name_to_properties(
         if GCname did not yield anything CompNotFound=GCname.
 
     """
-    # classes used to split compounds into functional groups
+
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError("The argument df must be a pd.DataFrame.")
+
+    if not isinstance(comp_name, str) or comp_name.isspace():
+        return _order_columns_in_compounds_properties(df)
+
+    if comp_name in df.index.tolist():
+        return _order_columns_in_compounds_properties(df)
+
     comp = get_compound_from_pubchempy(comp_name)
 
     if comp is None:
-        if not isinstance(comp_name, str):
-            return df
-        else:
-            if not comp_name or comp_name.isspace():
-                return df
-            else:
-                if df is not None:
-                    df.loc[comp_name, "iupac_name"] = "unidentified"
-                return df
-    if df is None:
-        df = pd.DataFrame(dtype=float)
+        df.loc[comp_name, "iupac_name"] = "unidentified"
+        return _order_columns_in_compounds_properties(df)
+
     try:
-        df.loc[comp_name, "iupac_name"] = comp.iupac_name.lower()
+        valid_iupac_name = comp.iupac_name.lower()
     except AttributeError:  # iupac_name not give
-        df.loc[comp_name, "iupac_name"] = comp_name.lower()
+        valid_iupac_name = comp_name.lower()
+
+    df.loc[comp_name, "iupac_name"] = valid_iupac_name
     df.loc[comp_name, "molecular_formula"] = comp.molecular_formula
     df.loc[comp_name, "canonical_smiles"] = comp.canonical_smiles
     df.loc[comp_name, "molecular_weight"] = float(comp.molecular_weight)
@@ -157,16 +175,14 @@ def name_to_properties(
         df.at[comp_name, f"el_{key}"] = int(value)
 
     for key, value in el_mf_dict.items():
-        df.at[comp_name, f"el_{key}"] = float(value)
-    cols_el_mf = [col for col in df.columns if col.startswith("el_mf")]
+        df.at[comp_name, f"el_mf_{key}"] = float(value)
+    cols_el_mf = [col for col in df.columns if col.startswith("el_mf_")]
     residual_els = df.loc[comp_name, cols_el_mf].sum() - 1
     # check element sum
     try:
         assert residual_els <= precision_sum_elements
     except AssertionError:
-        raise AssertionError(
-            f"the total mass fraction of elements in {comp_name =} is > 0.001"
-        )
+        print(f"the total mass fraction of elements in {comp_name =} is > 0.001")
     # apply fragmentation using the Fragmenter class (thanks simonmb)
     frg = Fragmenter(
         dict_classes_to_codes,
@@ -206,17 +222,15 @@ def name_to_properties(
         assert residual_fgs <= precision_sum_functional_group
     except AssertionError:
         print(f"{df.loc[comp_name, cols_fg_mf].sum()=}")
-        raise AssertionError(
+        print(
             f"the total mass fraction of functional groups in {comp_name =} is > 0.05"
         )
     if residual_fgs < -precision_sum_functional_group:
-        df.at[comp_name, f"fg_mf_unclassified"] = abs(residual_fgs)
+        df.at[comp_name, "fg_mf_unclassified"] = abs(residual_fgs)
     df.loc[df["iupac_name"] != "unidentified"] = df.loc[
         df["iupac_name"] != "unidentified"
     ].fillna(0)
-    df = _order_columns_in_compounds_properties(df)
-
-    return df
+    return _order_columns_in_compounds_properties(df)
 
 
 # %%
@@ -340,10 +354,9 @@ class Project:
     }
     acceptable_params: list[str] = list(param_to_axis_label.keys())
     string_in_deriv_names: list[str] = [
-        "deriv.",
-        "derivative",
-        "TMS",
-        "TBDMS",
+        "deriv",
+        "tms",
+        "tbms",
         "trimethylsilyl",
     ]
     string_in_deriv_names = [s.lower() for s in string_in_deriv_names]
@@ -798,20 +811,22 @@ class Project:
         """Attempts to load the 'compounds_properties.xlsx' file containing physical
         and chemical properties of compounds. If not found, it creates a new properties
         DataFrame and updates the 'compounds_properties_created' attribute."""
-        try:
+        compounds_properties_path = plib.Path(
+            Project.in_path, "compounds_properties.xlsx"
+        )
+        if compounds_properties_path.exists():
             cpdf = pd.read_excel(
-                plib.Path(Project.in_path, "compounds_properties.xlsx"),
+                compounds_properties_path,
                 index_col="comp_name",
             )
-            cpdf = self._order_columns_in_compounds_properties(cpdf)
-            cpdf = cpdf.fillna(0)
+            # cpdf = _order_columns_in_compounds_properties(cpdf)
+            # cpdf = cpdf.fillna(0)
             self.compounds_properties = cpdf
             self.compounds_properties_created = True
             print("Info: compounds_properties loaded")
-        except FileNotFoundError:
+        else:
             print("Warning: compounds_properties.xlsx not found, creating it")
             cpdf = self.create_compounds_properties()
-
         return self.compounds_properties
 
     def load_deriv_compounds_properties(self):
@@ -819,17 +834,20 @@ class Project:
         for derivatized compounds. If not found, it creates a new properties DataFrame
         for derivatized compounds and updates the 'deriv_compounds_properties_created' attribute.
         """
-        try:
+        compounds_deriv_properties_path = plib.Path(
+            Project.in_path, "deriv_compounds_properties.xlsx"
+        )
+        if compounds_deriv_properties_path.exists():
             dcpdf = pd.read_excel(
-                plib.Path(Project.in_path, "deriv_compounds_properties.xlsx"),
+                compounds_deriv_properties_path,
                 index_col="comp_name",
             )
-            dcpdf = self._order_columns_in_compounds_properties(dcpdf)
-            dcpdf = dcpdf.fillna(0)
+            # dcpdf = _order_columns_in_compounds_properties(dcpdf)
+            # cpdf = dcpdf.fillna(0)
             self.deriv_compounds_properties = dcpdf
             self.deriv_compounds_properties_created = True
             print("Info: deriv_compounds_properties loaded")
-        except FileNotFoundError:
+        else:
             print("Warning: deriv_compounds_properties.xlsx not found, creating it")
             dcpdf = self.create_deriv_compounds_properties()
         return self.deriv_compounds_properties
@@ -844,18 +862,20 @@ class Project:
             self.load_class_code_frac()
         if not self.list_of_all_compounds_created:
             self.create_list_of_all_compounds()
-        cpdf = pd.DataFrame(index=pd.Index(self.list_of_all_compounds))
-        cpdf.index.name = "comp_name"
+        # cpdf = pd.DataFrame(index=pd.Index(self.list_of_all_compounds))
+        #
+        cpdf = pd.DataFrame()
         print("Info: create_compounds_properties: looping over names")
-        for name in cpdf.index:
+        for name in self.list_of_all_compounds:
             cpdf = name_to_properties(
-                name,
-                cpdf,
-                self.dict_classes_to_codes,
-                self.dict_classes_to_mass_fractions,
+                comp_name=name,
+                dict_classes_to_codes=self.dict_classes_to_codes,
+                dict_classes_to_mass_fractions=self.dict_classes_to_mass_fractions,
+                df=cpdf,
             )
-        cpdf = self._order_columns_in_compounds_properties(cpdf)
-        cpdf = cpdf.fillna(0)
+        # cpdf = self._order_columns_in_compounds_properties(cpdf)
+        # cpdf = cpdf.fillna(0)
+        cpdf.index.name = "comp_name"
         self.compounds_properties = cpdf
         self.compounds_properties_created = True
         # save db in the project folder in the input
@@ -874,81 +894,53 @@ class Project:
             self.load_class_code_frac()
         if not self.list_of_all_deriv_compounds_created:
             self.create_list_of_all_deriv_compounds()
-
-        old_unique_deriv_compounds = self.list_of_all_deriv_compounds
-        # unique_underiv_compounds = [
-        #     ",".join(name.split(",")[:-1]) for name in unique_deriv_compounds
-        # ]
-        unique_deriv_compounds = []
-        unique_underiv_compounds = []
-        for name in old_unique_deriv_compounds:
-            underiv_name = ",".join(name.split(",")[:-1])
-            deriv_string = name.split(",")[-1]
-            if underiv_name == "":
-                underiv_name = name
-            else:
-                if any([der in deriv_string for der in Project.string_in_deriv_names]):
-                    unique_deriv_compounds.append(name)
-                    unique_underiv_compounds.append(underiv_name)
-        dcpdf = pd.DataFrame(index=pd.Index(unique_underiv_compounds))
-        dcpdf.index.name = "comp_name"
-        dcpdf["deriv_comp_name"] = unique_deriv_compounds
-        print("Info: create_deriv_compounds_properties: looping over names")
-        for name in dcpdf.index:
-            dcpdf = name_to_properties(
-                name,
-                dcpdf,
-                self.dict_classes_to_codes,
-                self.dict_classes_to_mass_fractions,
+        deriv_to_underiv = {}
+        for derivname in self.list_of_all_deriv_compounds:
+            parts = derivname.split(",")
+            is_der_str_in_part2: bool = any(
+                [
+                    der_str in parts[-1].strip()
+                    for der_str in Project.string_in_deriv_names
+                ]
             )
-        # remove duplicates that may come from the "made up" name in calibration
-        # dcpdf = dcpdf.drop_duplicates(subset='iupac_name')
-        dcpdf["underiv_comp_name"] = dcpdf.index
-        dcpdf.set_index("deriv_comp_name", inplace=True)
-        dcpdf.index.name = "comp_name"
-        dcpdf = self._order_columns_in_compounds_properties(dcpdf)
-        dcpdf = dcpdf.fillna(0)
+            if len(parts) > 1 and is_der_str_in_part2:
+                # If the suffix is a known derivatization, use the part before the comma
+                deriv_to_underiv[derivname] = ",".join(parts[:-1])
+            else:
+                # In all other cases, mark as "unidentified"
+                deriv_to_underiv[derivname] = "unidentified"
+        print("Info: create_deriv_compounds_properties: looping over names")
+        underiv_comps_to_search_for = [
+            c for c in deriv_to_underiv.values() if c != "unidentified"
+        ]
+        dcpdf = pd.DataFrame()
+        for name in underiv_comps_to_search_for:
+            dcpdf = name_to_properties(
+                comp_name=name,
+                dict_classes_to_codes=self.dict_classes_to_codes,
+                dict_classes_to_mass_fractions=self.dict_classes_to_mass_fractions,
+                df=dcpdf,
+            )
+        dcpdf.index.name = "underiv_comp_name"
+        dcpdf.reset_index(inplace=True)
+        underiv_to_deriv = {
+            v: k for k, v in deriv_to_underiv.items() if v != "unidentified"
+        }
+        # Add a new column for the derivatized compound names
+        # If a name is not in the underiv_to_deriv (thus 'unidentified'), it will get a value of NaN
+
+        dcpdf["comp_name"] = dcpdf["underiv_comp_name"].apply(
+            lambda x: underiv_to_deriv.get(x, "unidentified")
+        )
+        dcpdf.set_index("comp_name", inplace=True)
         # save db in the project folder in the input
         self.deriv_compounds_properties = dcpdf
         dcpdf.to_excel(plib.Path(Project.in_path, "deriv_compounds_properties.xlsx"))
         self.compounds_properties_created = True
         print(
-            "Info: create_deriv_compounds_properties:"
-            + "deriv_compounds_properties created and saved"
+            "Info: create_deriv_compounds_properties: deriv_compounds_properties created and saved"
         )
         return self.deriv_compounds_properties
-
-    def _order_columns_in_compounds_properties(self, comp_df):
-        ord_cols1, ord_cols2, ord_cols3, ord_cols4, ord_cols5, ord_cols6 = (
-            [],
-            [],
-            [],
-            [],
-            [],
-            [],
-        )
-        for c in comp_df.columns:
-            if not c.startswith(("el_", "fg_")):
-                ord_cols1.append(c)
-            elif c.startswith("el_mf"):
-                ord_cols3.append(c)
-            elif c.startswith("el_"):
-                ord_cols2.append(c)
-            elif c.startswith("fg_mf_total"):
-                ord_cols6.append(c)
-            elif c.startswith("fg_mf"):
-                ord_cols5.append(c)
-            elif c.startswith("fg_"):
-                ord_cols4.append(c)
-        comp_df = comp_df[
-            ord_cols1
-            + sorted(ord_cols2)
-            + sorted(ord_cols3)
-            + sorted(ord_cols4)
-            + sorted(ord_cols5)
-            + sorted(ord_cols6)
-        ]
-        return comp_df
 
     # def add_iupac_to_calibrations(self):
     #     """Adds the IUPAC name to each compound in the calibration data,
