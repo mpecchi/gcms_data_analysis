@@ -154,7 +154,11 @@ def test_files_param_reports(gcms, checked_files_param_reports, parameter):
     to_check = gcms.create_files_param_report(param=parameter)
     checked_report = checked_files_param_reports[parameter]
     assert_frame_equal(
-        to_check, checked_report, check_exact=False, atol=1e-5, rtol=1e-5
+        to_check.sort_index(),
+        checked_report.sort_index(),
+        check_exact=False,
+        atol=1e-5,
+        rtol=1e-5,
     )
 
 
@@ -179,7 +183,11 @@ def test_files_param_aggrreps(gcms, checked_files_param_aggrreps, parameter):
     to_check = gcms.create_files_param_aggrrep(param=parameter)
     checked_report = checked_files_param_aggrreps[parameter]
     assert_frame_equal(
-        to_check, checked_report, check_exact=False, atol=1e-5, rtol=1e-5
+        to_check.sort_index(),
+        checked_report.sort_index(),
+        check_exact=False,
+        atol=1e-5,
+        rtol=1e-5,
     )
 
 
@@ -207,10 +215,18 @@ def test_samples_param_reports(
     checked_report = checked_samples_param_reports[parameter]
     checked_report_std = checked_samples_param_reports_std[parameter]
     assert_frame_equal(
-        to_check, checked_report, check_exact=False, atol=1e-5, rtol=1e-5
+        to_check.sort_index(),
+        checked_report.sort_index(),
+        check_exact=False,
+        atol=1e-5,
+        rtol=1e-5,
     )
     assert_frame_equal(
-        to_check_std, checked_report_std, check_exact=False, atol=1e-5, rtol=1e-5
+        to_check_std.sort_index(),
+        checked_report_std.sort_index(),
+        check_exact=False,
+        atol=1e-5,
+        rtol=1e-5,
     )
 
 
@@ -238,10 +254,18 @@ def test_samples_param_aggrreps(
     checked_report = checked_samples_param_aggrreps[parameter]
     checked_report_std = checked_samples_param_aggrreps_std[parameter]
     assert_frame_equal(
-        to_check, checked_report, check_exact=False, atol=1e-5, rtol=1e-5
+        to_check.sort_index(),
+        checked_report.sort_index(),
+        check_exact=False,
+        atol=1e-5,
+        rtol=1e-5,
     )
     assert_frame_equal(
-        to_check_std, checked_report_std, check_exact=False, atol=1e-5, rtol=1e-5
+        to_check_std.sort_index(),
+        checked_report_std.sort_index(),
+        check_exact=False,
+        atol=1e-5,
+        rtol=1e-5,
     )
 
 
