@@ -1,2 +1,0 @@
-# command to run to compile paper.md to pdf (required being in the correct directory)
-pandoc paper.md --citeproc --bibliography=paper_files/paper.bib -o paper.pdf

@@ -6,7 +6,7 @@ from gcms_data_analysis.plotting import plot_ave_std
 # Define the folder path where your data is located. Change this path to where you've stored your data files.
 # folder_path = plib.Path(plib.Path(__file__).parent, "example\data")
 folder_path = plib.Path(
-    r"C:\Users\mp933\OneDrive - Cornell University\Python\gcms_data_analysis\tests\data_minimal_case"
+    r"path\to\data\folder\"
 )
 # folder_path: plib.Path = plib.Path(
 #     r"C:\Users\mp933\OneDrive - Cornell University\Python\GCMS\NNDNDD"
@@ -48,95 +48,6 @@ for param in params:
     _, _ = gcms.create_samples_param_report(param)
     _, _ = gcms.create_samples_param_aggrrep(param)
 
-# %%
-for param in params:
-    print(f"'{param}': ")
-    print_checked_df_to_script_text_with_arrays(gcms.files_reports[param])
-# %%
-
-for param in params:
-    print(f"'{param}': ")
-    print_checked_df_to_script_text_with_arrays(gcms.files_aggrreps[param])
-# %%
-for param in params:
-    print(f"'{param}': ")
-    print_checked_df_to_script_text_with_arrays(gcms.samples_reports[param])
-# %%
-for param in params:
-    print(f"'{param}': ")
-    print_checked_df_to_script_text_with_arrays(gcms.samples_reports_std[param])
-# %%
-
-for param in params:
-    print(f"'{param}': ")
-    print_checked_df_to_script_text_with_arrays(gcms.samples_aggrreps[param])
-# %%
-
-for param in params:
-    print(f"'{param}': ")
-    print_checked_df_to_script_text_with_arrays(gcms.samples_aggrreps_std[param])
-# %%
-
-
-# Load classification codes and mass fractions for functional groups from a provided file
-class_code_frac = gcms.load_class_code_frac()
-
-# Load calibration data for standard and derivatized samples, and determine if they are derivatized
-calibrations, is_calibr_deriv = gcms.load_calibrations()
-# c1, c2 = calibrations["calibration"], calibrations["deriv_calibration"]
-
-# Generate a comprehensive list of all compounds found across samples
-list_of_all_compounds = gcms.create_list_of_all_compounds()
-
-# Similarly, create a list of all derivatized compounds found across samples
-list_of_all_deriv_compounds = gcms.create_list_of_all_deriv_compounds()
-
-# Load properties for standard and derivatized compounds from provided files
-compounds_properties = gcms.create_compounds_properties()
-deriv_compounds_properties = gcms.create_deriv_compounds_properties()
-
-# Flag indicating whether new compounds have been added, triggering a need to regenerate properties data
-new_files_with_new_compounds_added = False
-if new_files_with_new_compounds_added:
-    compounds_properties = gcms.create_compounds_properties()
-    deriv_compounds_properties = gcms.create_deriv_compounds_properties()
-
-# Apply calibration data to all loaded files, adjusting compound concentrations based on calibration curves
-files, is_files_deriv = gcms.apply_calibration_to_files()
-
-# Extract specific files for detailed analysis or further operations
-f11, f22, f33 = files["A_1"], files["Ader_1"], files["B_1"]
-
-# # Add statistical information to the files_info DataFrame, such as mean, median, and standard deviation for each file
-files_info = gcms.add_stats_to_files_info()
-
-# Create a samples_info DataFrame without applying calibration data, for initial analysis
-samples_info_0 = gcms.create_samples_info()
-
-# Create samples and their standard deviations from the files, storing the results in dictionaries
-samples, samples_std = gcms.create_samples_from_files()
-s1, s2, s3 = samples["A"], samples["Ader"], samples["B"]
-sd1, sd2, sd3 = samples_std["A"], samples_std["Ader"], samples_std["B"]
-
-# Generate reports for specific parameters (e.g., concentration, mass fraction) for files and samples
-rep_files_conc = gcms.create_files_param_report(param="conc_vial_mg_L")
-rep_files_fr = gcms.create_files_param_report(param="fraction_of_sample_fr")
-rep_samples_conc, rep_samples_conc_std = gcms.create_samples_param_report(
-    param="conc_vial_mg_L"
-)
-rep_samples_fr, rep_samples_fr_std = gcms.create_samples_param_report(
-    param="fraction_of_sample_fr"
-)
-
-# Generate aggregated reports based on functional groups for files and samples, for specific parameters
-agg_files_conc = gcms.create_files_param_aggrrep(param="conc_vial_mg_L")
-agg_files_fr = gcms.create_files_param_aggrrep(param="fraction_of_sample_fr")
-agg_samples_conc, agg_samples_conc_std = gcms.create_samples_param_aggrrep(
-    param="conc_vial_mg_L"
-)
-agg_samples_fr, agg_samples_fr_std = gcms.create_samples_param_aggrrep(
-    param="fraction_of_sample_fr"
-)
 
 # Plotting results based on the generated reports, allowing for visual comparison of average values and standard deviations
 # Plot results for individual files or samples based
@@ -147,7 +58,7 @@ plot_ave_std(
     min_y_thresh=0,
     files_or_samples="files",
     legend_location="outside",
-    only_samples_to_plot=["A_1", "A_2", "Ader_1", "Ader_2"],  # y_lim=[0, 5000]
+    only_samples_to_plot=["S_1", "S_2", "T_1", "T_2"],  # y_lim=[0, 5000]
 )
 # plot results bases on aggreport
 plot_ave_std(
@@ -165,7 +76,7 @@ plot_ave_std(
     param="fraction_of_sample_fr",
     min_y_thresh=0,
     legend_location="outside",
-    only_samples_to_plot=["A", "Ader"],  # y_lim=[0, 5000]
+    only_samples_to_plot=["S", "T"],  # y_lim=[0, 5000]
 )
 # plot results bases on aggreport
 plot_ave_std(
