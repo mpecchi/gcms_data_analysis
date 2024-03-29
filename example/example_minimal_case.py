@@ -5,9 +5,7 @@ from gcms_data_analysis.plotting import plot_ave_std
 
 # Define the folder path where your data is located. Change this path to where you've stored your data files.
 # folder_path = plib.Path(plib.Path(__file__).parent, "example\data")
-folder_path = plib.Path(
-    r"path\to\data\folder\"
-)
+folder_path = plib.Path(r"path\to\data\folder\\")
 # folder_path: plib.Path = plib.Path(
 #     r"C:\Users\mp933\OneDrive - Cornell University\Python\GCMS\NNDNDD"
 # )

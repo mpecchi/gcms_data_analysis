@@ -324,6 +324,7 @@ class MyFigure:
             "legend": True,
             "legend_loc": "best",
             "legend_ncols": 1,
+            "legend_title": None,
             "annotate_lttrs": False,
             "annotate_lttrs_xy": None,
             "grid": False,
@@ -344,6 +345,12 @@ class MyFigure:
         :raises ValueError: _description_
         :raises ValueError: _description_
         """
+        valid_kwargs = set(self.default_kwargs().keys())
+
+        # Check for any invalid keyword arguments
+        for kwarg in self.kwargs:
+            if kwarg not in valid_kwargs:
+                raise ValueError(f"Invalid keyword argument: '{kwarg}'")
         self.kwargs["rows"] = int(self.kwargs["rows"])
         self.kwargs["cols"] = int(self.kwargs["cols"])
         self.kwargs["width"] = float(self.kwargs["width"])
@@ -445,17 +452,19 @@ class MyFigure:
 
     def add_legend(self) -> None:
         """_summary_"""
-        for sprop in ["legend", "legend_loc", "legend_ncols"]:
+        for sprop in ["legend", "legend_loc", "legend_ncols", "legend_title"]:
             self.broad_props[sprop] = self._broadcast_value_prop(
                 self.kwargs[sprop], sprop
             )
 
         if self.kwargs["twinx"] is False:
+
             for i, ax in enumerate(self.axs):
                 if self.broad_props["legend"][i]:
                     ax.legend(
                         loc=self.broad_props["legend_loc"][i],
                         ncol=self.broad_props["legend_ncols"][i],
+                        title=self.broad_props["legend_title"][i],
                     )
         else:
             for i, (ax, axt) in enumerate(zip(self.axs, self.axts)):
@@ -467,6 +476,7 @@ class MyFigure:
                         lab_ax + lab_axt,
                         loc=self.broad_props["legend_loc"][i],
                         ncol=self.broad_props["legend_ncols"][i],
+                        title=self.broad_props["legend_title"][i],
                     )
 
     def annotate_letters(self) -> None:
@@ -665,6 +675,7 @@ def plot_ave_std(
     legend_x_anchor: float = 1,
     legend_y_anchor: float = 1.02,
     legend_labelspacing: float = 0.5,
+    legend_title: str | None = None,
     **kwargs,
 ) -> MyFigure:
     """
@@ -919,6 +930,7 @@ def plot_ave_std(
                 ncol=legend_columns,
                 bbox_to_anchor=(legend_x_anchor, legend_y_anchor),
                 labelspacing=legend_labelspacing,
+                title=legend_title,
             )
         else:  # legend is inside of plot area
             myfig.axs[0].legend(
@@ -927,6 +939,7 @@ def plot_ave_std(
                 loc=legend_location,
                 ncol=legend_columns,
                 labelspacing=legend_labelspacing,
+                title=legend_title,
             )
     # annotate ave+-std at the top of outliers bar (exceeding y_lim)
     if annotate_outliers and (y_lim is not None):  # and (not df_std.empty):
