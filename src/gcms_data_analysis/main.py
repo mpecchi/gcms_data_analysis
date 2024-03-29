@@ -5,9 +5,6 @@ Created on Mon Jun  5 10:45:31 2023
 @author: mp933
 """
 
-
-# %%
-import marshal
 import pathlib as plib
 import numpy as np
 import pandas as pd
@@ -22,504 +19,82 @@ from rdkit.Chem import rdmolops
 from rdkit.Chem.AllChem import (
     GetMorganFingerprintAsBitVect,
 )  # pylint: disable=no-name-in-module
+from gcms_data_analysis.fragmenter import Fragmenter
 
 
-def figure_create(
-    rows=1,
-    cols=1,
-    plot_type=0,
-    paper_col=1,
-    hgt_mltp=1,
-    font="Dejavu Sans",
-    sns_style="ticks",
-):
-    """
-    This function creates all the necessary objects to produce plots with
-    replicable characteristics.
-
-    Parameters
-    ----------
-    rows : int, optional
-        Number of plot rows in the grid. The default is 1.
-    cols : int, optional
-        Number of plot columns in the grid. The default is 1.
-    plot_type : int, optional
-        One of the different plot types available. The default is 0.
-        Plot types and their labels:
-        0. Std: standard plot (single or grid rows x cols)
-        1. Twin-x: secondary axis plot (single or grid rows x cols)
-        5. Subplots with different heights
-        6. Multiplot without internal x and y tick labels
-        7. Multiplot without internal x tick labels
-        8. Plot with specific distances between subplots and different heights
-    paper_col : int, optional
-        Single or double column size for the plot, meaning the actual space
-        it will fit in a paper. The default is 1.
-    hgt_mltp: float, optional
-        Multiplies the figure height. Default is 1. Best using values between
-        0.65 and 2. May not work with multiplot and paper_col=1 or out of the
-        specified range.
-    font: str, optional
-        If the string 'Times' is given, it sets Times New Roman as the default
-        font for the plot, otherwise the default Dejavu Sans is maintained.
-        Default is 'Dejavu Sans'.
-    sns_style: str, optional
-        The style of the seaborn plot. The default is 'ticks'.
-
-    Returns
-    -------
-    fig : object
-        The figure object to be passed to figure_save.
-    lst_ax : list of axis
-        List of axis (it is a list even with 1 axis) on which to plot.
-    lst_axt : list of axis
-        List of secondary axis (it is a list even with 1 axis).
-    fig_par : list of float
-        List of parameters to reserve space around the plot canvas.
-
-    Raises
-    ------
-    ValueError
-        If cols > 2, which is not supported.
-
-    """
-    sns.set_palette("deep")
-    # set Times New Roman as the plot font fot text
-    if font == "Times" or font == "Times New Roman":
-        # this may require the installation of the font package
-        sns.set_style(sns_style, {"font.family": "Times New Roman"})
-    else:  # leave Dejavu Sans (default) as the plot font fot text
-        sns.set_style(sns_style)
-    # single or double column in paperthat the figure will occupy
-    if cols > 2:  # numer of columns (thus of plots in the figure)
-        raise ValueError("\n figure_create: cols>2 not supported")
-
-    # width of the figure in inches, it's fixed to keep the same text size
-    # is 6, 9, 12 for 1, 1.5, and 3 paper_col (columns in paper)
-    fig_wdt = 6 * paper_col  # width of the plot in inches
-    fig_hgt = 4 * paper_col * rows / cols * hgt_mltp  # heigth of the figure in inches
-    px = 0.06 * (6 / fig_wdt) * cols  # set px so that (A) fits the square
-    py = px * fig_wdt / fig_hgt / cols * rows / hgt_mltp  # set py so that (A) fits
-    # if more rows are added, it increases, but if cols areadded it decreases
-    # to maintain the plot ratio
-    # set plot margins
-    sp_lab_wdt = 0.156 / paper_col  # hor. space for labels
-    sp_nar_wdt = 0.02294 / paper_col  # space narrow no labels (horiz)
-    sp_lab_hgt = 0.147 / paper_col / rows * cols / hgt_mltp  # space for labels (vert)
-    sp_nar_hgt = 0.02 / paper_col / rows * cols / hgt_mltp  # space narrow no labels
-    # (vert)
-    # =========================================================================
-    # # 0. Std: standard plot (single or grid rows x cols)
-    # =========================================================================
-    if plot_type == 0:
-        fig, ax = plt.subplots(rows, cols, figsize=(fig_wdt, fig_hgt))
-        if rows * cols == 1:  # only 1 plot
-            lst_ax = [ax]  # create ax list for uniform iterations over 1 obj.
-        elif rows * cols > 1:  # more than one plot
-            lst_ax = [axs for axs in ax.flatten()]  # create list of axis
-        lst_axt = None  # no secondary axis in this plot_type
-        # horizontal space between plot in percentage
-        sp_btp_wdt = 0.26 * paper_col**2 - 1.09 * paper_col + 1.35
-        # vertical space between plot in percentage !!! needs DEBUG
-        sp_btp_hgt = 0.2 / paper_col * cols / hgt_mltp
-        # left, bottom, right, top, widthspace, heightspace
-        fig_par = [
-            sp_lab_wdt,
-            sp_lab_hgt,
-            1 - sp_nar_wdt,
-            1 - sp_nar_hgt,
-            sp_btp_wdt,
-            sp_btp_hgt,
-            px,
-            py,
-        ]
-    # =========================================================================
-    # # 1. Twin-x: secondary axis plot (single or grid rows x cols)
-    # =========================================================================
-    elif plot_type == 1:
-        fig, ax = plt.subplots(rows, cols, figsize=(fig_wdt, fig_hgt))
-        if rows * cols == 1:  # only 1 plot
-            lst_ax = [ax]  # create ax list for uniform iterations over 1 obj.
-            lst_axt = [ax.twinx()]  # create a list with secondary axis object
-        elif rows * cols > 1:  # more than one plot
-            lst_ax = [axs for axs in ax.flatten()]  # create list of axis
-            # create list of secondary twin axis
-            lst_axt = [axs.twinx() for axs in ax.flatten()]
-        # horizontal space between plot in percentage !!! needs DEBUG
-        sp_btp_wdt = 1.36 * paper_col**2 - 5.28 * paper_col + 5.57
-        # vertical space between plot in percentage !!! needs DEBUG
-        sp_btp_hgt = 0.2 / paper_col * cols / hgt_mltp
-        # left, bottom, right(DIFFERENT FROM STD), top, widthspace, heightspace
-        fig_par = [
-            sp_lab_wdt,
-            sp_lab_hgt,
-            1 - sp_lab_wdt,
-            1 - sp_nar_hgt,
-            sp_btp_wdt,
-            sp_btp_hgt,
-            px,
-            py,
-        ]
-
-    return fig, lst_ax, lst_axt, fig_par
-
-
-def figure_save(
-    filename,
-    out_path,
-    fig,
-    lst_ax,
-    lst_axt,
-    fig_par,
-    x_lab=None,
-    y_lab=None,
-    yt_lab=None,
-    x_lim=None,
-    y_lim=None,
-    yt_lim=None,
-    x_ticks=None,
-    y_ticks=None,
-    yt_ticks=None,
-    x_tick_labels=None,
-    y_tick_labels=None,
-    yt_tick_labels=None,
-    legend=None,
-    ncol_leg=1,
-    annotate_lttrs=False,
-    annotate_lttrs_loc="down",
-    pdf=False,
-    svg=False,
-    eps=False,
-    transparency=False,
-    subfolder=None,
-    tight_layout=False,
-    grid=False,
-    title=False,
-    set_size_inches=None,
-):
-    """
-    This function takes the objects created in figure_create and allows modifying
-    their appearance and saving the results.
-
-    Parameters
-    ----------
-    filename : str
-        Name of the figure. It is the name of the PNG or PDF file to be saved.
-    out_path : pathlib.Path object
-        Path to the output folder.
-    fig : figure object
-        Created in figure_save.
-    lst_ax : list of axis
-        Created in figure_create.
-    lst_axt : list of twin (secondary) axis
-        Created in figure_create.
-    fig_par : list
-        Figure parameters for space settings: left, bottom, right, top, widthspace, heightspace, px, py. Created in figure_create.
-    tight_layout : bool, optional
-        If True, ignores fig_par[0:6] and fits the figure to the tightest layout possible. Avoids losing part of the figure but loses control of margins. The default is False.
-    x_lab : str or list, optional
-        Label of the x-axis. The default is None. Can be given as:
-        - None: No axis gets an xlabel.
-        - 'label': A single string; all axes get the same xlabel.
-        - ['label1', None, 'Label2', ...]: A list matching the size of lst_ax containing labels and/or None values. Each axis is assigned its label; where None is given, no label is set.
-    y_lab : str, optional
-        Label of the y-axis. The default is None. Same options as x_lab.
-    yt_lab : str, optional
-        Label of the secondary y-axis. The default is None. Same options as x_lab.
-    x_lim : list, optional
-        Limits of the x-axis. The default is None. Can be given as:
-        - None: No axis gets an xlim.
-        - [a,b]: All axes get the same xlim.
-        - [[a,b], None, [c,d], ...]: A list matching the size of lst_ax containing [a,b] ranges and/or None values. Each axis is assigned its limit; where None is given, no limit is set.
-    y_lim : list, optional
-        Limits of the y-axis. The default is None. Same options as x_lim.
-    yt_lim : list, optional
-        Limits of the secondary y-axis. The default is None. Same options as x_lim.
-    x_ticks : list, optional
-        Ticks values to be shown on the x-axis. The default is None.
-    y_ticks : list, optional
-        Ticks values to be shown on the y-axis. The default is None.
-    yt_ticks : list, optional
-        Ticks values to be shown on the secondary y-axis. The default is None.
-    legend : str, optional
-        Contains info on the legend location. To avoid printing the legend (also in case it is empty), set it to None. The default is 'best'.
-    ncol_leg : int, optional
-        Number of columns in the legend. The default is 1.
-    annotate_lttrs : bool, optional
-        If True, each plot is assigned a letter in the lower left corner. The default is False. If a string is given, the string is used as the letter in the plot even for single plots.
-    annotate_lttrs_loc : str
-        Placement of annotation letters. 'down' for bottom-left, 'up' for top-left. The default is 'down'.
-    pdf : bool, optional
-        If True, saves the figure also in PDF format in the output folder. The default is False, so only a PNG file with
-    """
-
-    fig_adj_par = fig_par[0:6]
-    if not any(fig_par[0:6]):  # True if all element in fig_par[0:6] are False
-        tight_layout = True
-    px = fig_par[6]
-    py = fig_par[7]
-    n_ax = len(lst_ax)  # number of ax objects
-    # for x_lab, y_lab, yt_lab creates a list with same length as n_ax.
-    # only one value is given all axis are given the same label
-    # if a list is given, each axis is given a different value, where False
-    # is specified, no value is given to that particular axis
-    vrbls = [x_lab, y_lab, yt_lab, legend]  # collect variables for iteration
-    lst_x_lab, lst_y_lab, lst_yt_lab, lst_legend = (
-        [],
-        [],
-        [],
-        [],
-    )  # create lists for iteration
-    lst_vrbls = [lst_x_lab, lst_y_lab, lst_yt_lab, lst_legend]  # collect lists
-    for vrbl, lst_vrbl in zip(vrbls, lst_vrbls):
-        if vrbl is None:  # label is not given for any axis
-            lst_vrbl[:] = [None] * n_ax
-        else:  # label is given
-            if np.size(vrbl) == 1:  # only one value is given
-                if isinstance(vrbl, str):  # create a list before replicating it
-                    lst_vrbl[:] = [vrbl] * n_ax  # each axis gets same label
-                elif isinstance(vrbl, list):  # replicate the list
-                    lst_vrbl[:] = vrbl * n_ax  # each axis gets same label
-            elif np.size(vrbl) == n_ax:  # each axis has been assigned its lab
-                lst_vrbl[:] = vrbl  # copy the label inside the list
+def get_compound_from_pubchempy(comp_name: str) -> pcp.Compound:
+    if not isinstance(comp_name, str) or comp_name.isspace():
+        print(f"WARNING get_compound_from_pubchempy got an invalid {comp_name =}")
+        return None
+    cond = True
+    while cond:  # to deal with HTML issues on server sides (timeouts)
+        try:
+            # comp contains all info about the chemical from pubchem
+            try:
+                comp_inside_list = pcp.get_compounds(comp_name, "name")
+            except ValueError:
+                print(f"{comp_name = }")
+                return None
+            if comp_inside_list:
+                comp = comp_inside_list[0]
             else:
-                print(vrbl)
-                print("Labels/legend size does not match axes number")
-    # for x_lim, y_lim, yt_lim creates a list with same length as n_ax.
-    # If one list like [a,b] is given, all axis have the same limits, if a list
-    # of the same length of the axis is given, each axis has its lim. Where
-    # None is given, no lim is set on that axis
-    vrbls = [
-        x_lim,
-        y_lim,
-        yt_lim,
-        x_ticks,
-        y_ticks,
-        yt_ticks,
-        x_tick_labels,
-        y_tick_labels,
-        yt_tick_labels,
-    ]  # collect variables for iteration
-    (
-        lst_x_lim,
-        lst_y_lim,
-        lst_yt_lim,
-        lst_x_ticks,
-        lst_y_ticks,
-        lst_yt_ticks,
-        lst_x_tick_labels,
-        lst_y_tick_labels,
-        lst_yt_tick_labels,
-    ) = (
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-    )  # create lists for iteration
-    lst_vrbls = [
-        lst_x_lim,
-        lst_y_lim,
-        lst_yt_lim,
-        lst_x_ticks,
-        lst_y_ticks,
-        lst_yt_ticks,
-        lst_x_tick_labels,
-        lst_y_tick_labels,
-        lst_yt_tick_labels,
-    ]  # collect lists
-    for vrbl, lst_vrbl in zip(vrbls, lst_vrbls):
-        if vrbl is None:  # limit is not given for any axis
-            lst_vrbl[:] = [None] * n_ax
-        else:
-            # if only list and None are in vrbl, it is [[], None, [], ..]
-            # each axis has been assigned its limits
-            if any([isinstance(v, (int, float, np.int32, str)) for v in vrbl]):
-                temporary = []  # necessary to allow append on [:]
-                for i in range(n_ax):
-                    temporary.append(vrbl)  # give it to all axis
-                lst_vrbl[:] = temporary
-            else:  # x_lim=[[a,b], None, ...] = [list, bool] # no float
-                lst_vrbl[:] = vrbl  # a lim for each axis is already given
-    # loops over each axs in the ax array and set the different properties
-    for i, axs in enumerate(lst_ax):
-        # for each property, if the variable is not false, it is set
-        if lst_x_lab[i] is not None:
-            axs.set_xlabel(lst_x_lab[i])
-        if lst_y_lab[i] is not None:
-            axs.set_ylabel(lst_y_lab[i])
-        if lst_x_lim[i] is not None:
-            axs.set_xlim(
-                [
-                    lst_x_lim[i][0] * (1 + px) - px * lst_x_lim[i][1],
-                    lst_x_lim[i][1] * (1 + px) - px * lst_x_lim[i][0],
-                ]
-            )
-        if lst_y_lim[i] is not None:
-            axs.set_ylim(
-                [
-                    lst_y_lim[i][0] * (1 + py) - py * lst_y_lim[i][1],
-                    lst_y_lim[i][1] * (1 + py) - py * lst_y_lim[i][0],
-                ]
-            )
-        if lst_x_ticks[i] is not None:
-            axs.set_xticks(lst_x_ticks[i])
-        if lst_y_ticks[i] is not None:
-            axs.set_yticks(lst_y_ticks[i])
-        if lst_x_tick_labels[i] is not None:
-            axs.set_xticklabels(lst_x_tick_labels[i])
-        if lst_y_tick_labels[i] is not None:
-            axs.set_yticklabels(lst_y_tick_labels[i])
-        if grid:
-            axs.grid(True)
-        if annotate_lttrs is not False:
-            if annotate_lttrs_loc == "down":
-                y_lttrs = py / px * 0.02
-            elif annotate_lttrs_loc == "up":
-                y_lttrs = 1 - py
-            if n_ax == 1:  # if only one plot is given, do not put the letters
-                axs.annotate(
-                    "(" + annotate_lttrs + ")",
-                    xycoords="axes fraction",
-                    xy=(0, 0),
-                    rotation=0,
-                    size="large",
-                    xytext=(0, y_lttrs),
-                    weight="bold",
+                print(
+                    f"WARNING: name_to_properties {comp_name=} does not find an entry in pcp",
                 )
-            elif n_ax > 1:  # if only one plot is given, do not put the letters
-                try:  # if specific letters are provided
-                    axs.annotate(
-                        "(" + annotate_lttrs[i] + ")",
-                        xycoords="axes fraction",
-                        xy=(0, 0),
-                        rotation=0,
-                        size="large",
-                        xytext=(0, y_lttrs),
-                        weight="bold",
-                    )
-                except TypeError:  # if no specific letters, use lttrs
-                    lttrs = [
-                        "a",
-                        "b",
-                        "c",
-                        "d",
-                        "e",
-                        "f",
-                        "g",
-                        "h",
-                        "i",
-                        "j",
-                        "k",
-                        "l",
-                        "m",
-                        "n",
-                        "o",
-                        "p",
-                        "q",
-                        "r",
-                    ]
-                    axs.annotate(
-                        "(" + lttrs[i] + ")",
-                        xycoords="axes fraction",
-                        xy=(0, 0),
-                        rotation=0,
-                        size="large",
-                        xytext=(0, y_lttrs),
-                        weight="bold",
-                    )
+                return None
+            cond = False
+        except pcp.PubChemHTTPError:  # timeout error, simply try again
+            print("Caught: pcp.PubChemHTTPError (keep trying)")
+    return comp
 
-    # if secondary (twin) axis are given, set thier properties
-    if lst_axt is not None:
-        for i, axst in enumerate(lst_axt):
-            axst.grid(False)  # grid is always false on secondaty axis
-            # for each property, if the variable is not false, it is set
-            if lst_yt_lab[i] is not None:
-                axst.set_ylabel(lst_yt_lab[i])
-            if lst_yt_lim[i] is not None:
-                axst.set_ylim(
-                    [
-                        lst_yt_lim[i][0] * (1 + py) - py * lst_yt_lim[i][1],
-                        lst_yt_lim[i][1] * (1 + py) - py * lst_yt_lim[i][0],
-                    ]
-                )
-            if lst_yt_ticks[i] is not None:
-                axst.set_yticks(lst_yt_ticks[i])
-            if lst_yt_tick_labels[i] is not None:
-                axst.set_yticklabels(lst_yt_tick_labels[i])
-    # create a legend merging the entries for each couple of ax and axt
-    if any(lst_legend):
-        if lst_axt is None:  # with no axt, only axs in ax needs a legend
-            for i, axs in enumerate(lst_ax):
-                axs.legend(loc=lst_legend[i], ncol=ncol_leg)
-        else:  # merge the legend for each couple of ax and axt
-            i = 0
-            for axs, axst in zip(lst_ax, lst_axt):
-                hnd_ax, lab_ax = axs.get_legend_handles_labels()
-                hnd_axt, lab_axt = axst.get_legend_handles_labels()
-                axs.legend(
-                    hnd_ax + hnd_axt, lab_ax + lab_axt, loc=lst_legend[i], ncol=ncol_leg
-                )
-                i += 1
-    try:
-        fig.align_labels()  # align labels of subplots, needed only for multi plot
-    except AttributeError:
-        print("align_labels not performed")
-    # if a subfolder is specified, create the subfolder inside the output
-    # folder if not already there and save the figure in it
-    if subfolder is not None:
-        out_path = plib.Path(out_path, subfolder)  # update out_path
-        plib.Path(out_path).mkdir(parents=True, exist_ok=True)  # check if
-        # folder is there, if not create it
-    # set figure margins and save the figure in the output folder
-    if set_size_inches:
-        fig.set_size_inches(set_size_inches)
-    if tight_layout is False:  # if margins are given sets margins and save
-        fig.subplots_adjust(*fig_adj_par[0:6])  # set margins
-        plt.savefig(
-            plib.Path(out_path, filename + ".png"), dpi=300, transparent=transparency
-        )
-        if pdf is not False:  # save also as pdf
-            plt.savefig(plib.Path(out_path, filename + ".pdf"))
-        if svg is not False:  # save also as pdf
-            plt.savefig(plib.Path(out_path, filename + ".svg"))
-        if eps is not False:  # save also as pdf
-            plt.savefig(plib.Path(out_path, filename + ".eps"))
-    else:  # margins are not given, use a tight layout option and save
-        plt.savefig(
-            plib.Path(out_path, filename + ".png"),
-            bbox_inches="tight",
-            dpi=300,
-            transparent=transparency,
-        )
-        if pdf is not False:  # save also as pdf
-            plt.savefig(plib.Path(out_path, filename + ".pdf"), bbox_inches="tight")
-        if svg is not False:  # save also as pdf
-            plt.savefig(plib.Path(out_path, filename + ".svg"), bbox_inches="tight")
-        if eps is not False:  # save also as pdf
-            plt.savefig(plib.Path(out_path, filename + ".eps"), bbox_inches="tight")
-    # add the title after saving, so it's only visible in the console
-    if title is True:
-        lst_ax[0].annotate(
-            filename,
-            xycoords="axes fraction",
-            size="small",
-            xy=(0, 0),
-            xytext=(0.05, 0.95),
-            clip_on=True,
-        )
+
+def _order_columns_in_compounds_properties(
+    unsorted_df: pd.DataFrame | None,
+) -> pd.DataFrame | None:
+    if unsorted_df is None:
+        return None
+    priority_cols: list[str] = [
+        "iupac_name",
+        "underiv_comp_name",
+        "molecular_formula",
+        "canonical_smiles",
+        "molecular_weight",
+        "xlogp",
+    ]
+
+    # Define a custom sort key function
+    def sort_key(col):
+        if col in priority_cols:
+            return (-1, priority_cols.index(col))
+        if col.startswith("el_mf"):
+            return (2, col)
+        elif col.startswith("el_"):
+            return (1, col)
+        elif col.startswith("fg_mf_unclassified"):
+            return (5, col)
+        elif col.startswith("fg_mf"):
+            return (4, col)
+        elif col.startswith("fg_"):
+            return (3, col)
+        else:
+            return (0, col)
+
+    # Sort columns using the custom key
+    sorted_columns = sorted(unsorted_df.columns, key=sort_key)
+    sorted_df = unsorted_df.reindex(sorted_columns, axis=1)
+    sorted_df.index.name = "comp_name"
+    # Reindex the DataFrame with the sorted columns
+    return sorted_df
 
 
 def name_to_properties(
     comp_name: str,
-    df: pd.DataFrame,
     dict_classes_to_codes: dict[str:str],
     dict_classes_to_mass_fractions: dict[str:float],
-):
+    df: pd.DataFrame = pd.DataFrame(),
+    precision_sum_elements: float = 0.05,
+    precision_sum_functional_group: float = 0.05,
+) -> pd.DataFrame:
     """
     used to retrieve chemical properties of the compound indicated by the
     comp_name and to store those properties in the df
@@ -546,36 +121,28 @@ def name_to_properties(
         if GCname did not yield anything CompNotFound=GCname.
 
     """
-    # classes used to split compounds into functional groups
-    cond = True
-    while cond:  # to deal with HTML issues on server sides (timeouts)
-        try:
-            # comp contains all info about the chemical from pubchem
-            try:
-                comp_inside_list = pcp.get_compounds(comp_name, "name")
-            except ValueError:
-                print(f"{comp_name = }")
-            if comp_inside_list:
-                comp = comp_inside_list[0]
-            else:
-                print(
-                    "WARNING: name_to_properties ",
-                    comp_name,
-                    " does not find an entry in pcp",
-                )
-                df.loc[comp_name, "iupac_name"] = "unidentified"
-                return df
-            cond = False
-        except pcp.PubChemHTTPError:  # timeout error, simply try again
-            print("Caught: pcp.PubChemHTTPError")
 
-    # fill the df with the data
-    if df is None:
-        df = pd.DataFrame(dtype=float)
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError("The argument df must be a pd.DataFrame.")
+
+    if not isinstance(comp_name, str) or comp_name.isspace():
+        return _order_columns_in_compounds_properties(df)
+
+    if comp_name in df.index.tolist():
+        return _order_columns_in_compounds_properties(df)
+
+    comp = get_compound_from_pubchempy(comp_name)
+
+    if comp is None:
+        df.loc[comp_name, "iupac_name"] = "unidentified"
+        return _order_columns_in_compounds_properties(df)
+
     try:
-        df.loc[comp_name, "iupac_name"] = comp.iupac_name.lower()
+        valid_iupac_name = comp.iupac_name.lower()
     except AttributeError:  # iupac_name not give
-        df.loc[comp_name, "iupac_name"] = comp_name.lower()
+        valid_iupac_name = comp_name.lower()
+
+    df.loc[comp_name, "iupac_name"] = valid_iupac_name
     df.loc[comp_name, "molecular_formula"] = comp.molecular_formula
     df.loc[comp_name, "canonical_smiles"] = comp.canonical_smiles
     df.loc[comp_name, "molecular_weight"] = float(comp.molecular_weight)
@@ -586,19 +153,36 @@ def name_to_properties(
         TypeError
     ):  # float() argument must be a string or a real number, not 'NoneType'
         df.loc[comp_name, "xlogp"] = np.nan
-    # count all atoms presence and compoute mass percentage
     elements = set(comp.to_dict()["elements"])
+    el_dict = {}
+    el_mf_dict = {}
+
     for el in elements:
         el_count = comp.to_dict()["elements"].count(el)
         el_mass = ele.element_from_symbol(el).mass
-        if not "el_" + el in df:
-            df["el_" + el] = 0
-            df["el_mf_" + el] = 0.0
-        df.loc[comp_name, "el_" + el] = int(el_count)
-        df.loc[comp_name, "el_mf_" + el] = (
+
+        # Using similar logic as in the fg_dict example
+        if el not in el_dict:
+            el_dict[el] = 0
+            el_mf_dict[el] = 0.0
+
+        el_dict[el] += int(el_count)
+        el_mf_dict[el] += (
             float(el_count) * float(el_mass) / float(comp.molecular_weight)
         )
+    # Now, update the DataFrame in a similar way to the fg_dict example
+    for key, value in el_dict.items():
+        df.at[comp_name, f"el_{key}"] = int(value)
 
+    for key, value in el_mf_dict.items():
+        df.at[comp_name, f"el_mf_{key}"] = float(value)
+    cols_el_mf = [col for col in df.columns if col.startswith("el_mf_")]
+    residual_els = df.loc[comp_name, cols_el_mf].sum() - 1
+    # check element sum
+    try:
+        assert residual_els <= precision_sum_elements
+    except AssertionError:
+        print(f"the total mass fraction of elements in {comp_name =} is > 0.001")
     # apply fragmentation using the Fragmenter class (thanks simonmb)
     frg = Fragmenter(
         dict_classes_to_codes,
@@ -606,108 +190,58 @@ def name_to_properties(
         algorithm="simple",
     )
     fragmentation, _, _ = frg.fragment(comp.canonical_smiles)
-    classes = list(fragmentation.keys())
-    classes_mf = ["mf_" + cl for cl in classes]
-    # df is the intermediate df for classes that helps with sums of
-    # similar classes (ex. there are 27 different configs for ketones that
-    # go in the same final class)
+    fg_dict = {}
+    fg_mf_dict = {}
+    # Iterate over each item in the dictionary
+    for key, value in fragmentation.items():
+        # Determine the root key (the part before an underscore, if present)
+        root_key = key.split("_")[0]
+        # if root_key in hetero_atoms:
+        #     pass
+        # Check if the root key is in the sum_dict; if not, initialize it
+        if root_key not in fg_dict:
+            fg_dict[root_key] = 0
+            fg_mf_dict[root_key] = 0
+        # Add the value to the corresponding root key in the sum_dict
+        fg_dict[root_key] += int(fragmentation[key])
+        fg_mf_dict[root_key] += (
+            float(fragmentation[key])
+            * float(dict_classes_to_mass_fractions[key])
+            / df.loc[comp_name, "molecular_weight"].astype(float)
+        )  # mass fraction of total
 
-    newdf = pd.DataFrame(
-        0, columns=classes + classes_mf, index=[comp_name], dtype=float
-    )
-
-    # print(f"{df.loc[comp_name, :]}")
-    # mol_weight = df.loc[comp_name, "molecular_weight"]
-
-    for cl in classes:  # get counts and mf of each class in compound
-        newdf.loc[comp_name, cl] = fragmentation[cl]  # counts in
+    # Update df with fg_dict
+    for key, value in fg_dict.items():
+        df.at[comp_name, f"fg_{key}"] = int(value)  # Update the cell
+    # Update df with fg_mf_dict
+    for key, value in fg_mf_dict.items():
+        df.at[comp_name, f"fg_mf_{key}"] = float(value)  # Update the cell
+    cols_fg_mf = [col for col in df.columns if col.startswith("fg_mf")]
+    residual_fgs = df.loc[comp_name, cols_fg_mf].sum() - 1
     try:
-        for cl in classes:  # get counts and mf of each class in compound
-            newdf.loc[comp_name, "mf_" + cl] = (
-                float(fragmentation[cl])
-                * float(dict_classes_to_mass_fractions[cl])
-                / df.loc[comp_name, "molecular_weight"].astype(float)
-            )  # mass fraction of total
-    except ValueError:
-        print(f"{comp_name = }")
-    # classes that must be summed and considered a single one are identified
-    # by the same name followed by _#. if _ is in a class, its not unique
-    unique_classes = [c if "_" not in c else c.split("_")[0] for c in classes]
-    for unique_cl in unique_classes:  # sum classes that must be merged
-        sum_cls = [k for k in classes if unique_cl in k]  # classes to be summed
-        occurr = 0  # counts, or occurrencies
-        cl_mf = 0.0  # class mass fracations
-        for cl in sum_cls:  # for each class that must be summed
-            occurr += newdf.loc[comp_name, cl].astype(int)  # sum counts
-            cl_mf += newdf.loc[comp_name, "mf_" + cl].astype(
-                float
-            )  # sum mass fractions
-        if not "fg_" + unique_cl in df:  # create columns if missing
-            df["fg_" + unique_cl] = 0
-            df["fg_mf_" + unique_cl] = 0.0
-        df.loc[comp_name, "fg_" + unique_cl] = occurr  # put values in DF
-        df.loc[comp_name, "fg_mf_" + unique_cl] = float(cl_mf)
-    # heteroatoms and Si are considered functional groups as they usually
-    # enter the discussion in a similar way. The atom count is used here
-    hetero_atoms = [e for e in elements if e not in ["H", "C", "O", "N", "Si"]]
-
-    if hetero_atoms is not None:
-        for ha in hetero_atoms:
-            ha_col = "el_" + ha
-            ha_mf_col = "el_mf_" + ha
-            fg_col = "fg_" + ha
-            fg_mf_col = "fg_mf_" + ha
-
-            # Initialize columns if they don't exist
-            if fg_col not in df.columns:
-                df[fg_col] = 0
-            if fg_mf_col not in df.columns:
-                df[fg_mf_col] = 0.0
-
-            # Aggregate counts and mass fractions for hetero atoms
-            if ha in elements:  # Ensure the element is present before processing
-                df.loc[comp_name, fg_col] = df.loc[comp_name, ha_col].astype(int)
-                df.loc[comp_name, fg_mf_col] = df.loc[comp_name, ha_mf_col]
-        # Handle hetero atoms sum separately if needed
-        if hetero_atoms:
-            fg_columns = ["fg_" + e for e in hetero_atoms]
-            fg_mf_columns = ["fg_mf_" + e for e in hetero_atoms]
-
-            # Handle case when selection returns a Series or a single value
-            if isinstance(df.loc[comp_name, fg_columns], pd.Series):
-                fg_sum = df.loc[comp_name, fg_columns].astype(int).sum()
-            else:  # If it's not a Series, it could be a single value (if only one column is selected)
-                fg_sum = df.loc[comp_name, fg_columns].astype(int)
-
-            df.loc[comp_name, "fg_hetero_atoms"] = fg_sum
-
-            # For 'fg_mf_hetero_atoms', assuming you want to assign the value directly
-            # Here, you might need to handle single/multiple selections differently based on your needs
-            if isinstance(df.loc[comp_name, fg_mf_columns], pd.Series):
-                # This assumes you want to somehow aggregate or select from the Series
-                # Example: selecting the first element if there are multiple. Adjust as needed.
-                df.loc[comp_name, "fg_mf_hetero_atoms"] = df.loc[
-                    comp_name, fg_mf_columns
-                ].iloc[0]
-            else:
-                # Direct assignment if it's a single value
-                df.loc[comp_name, "fg_mf_hetero_atoms"] = df.loc[
-                    comp_name, fg_mf_columns
-                ]
-            df["fg_hetero_atoms"] = df["fg_hetero_atoms"].fillna(0).astype("int64")
-            df["fg_mf_hetero_atoms"] = df["fg_mf_hetero_atoms"].fillna(0).astype(float)
-        # Ensure Si is handled correctly if present
-    if "Si" in elements:
-        df.loc[comp_name, "fg_Si"] = df.loc[comp_name, "el_Si"].astype(int)
-        df.loc[comp_name, "fg_mf_Si"] = df.loc[comp_name, "el_mf_Si"]
-
-    fg_mf_cols = [c for c in list(df) if "fg_mf" in c and c != "fg_mf_total"]
-    df["fg_mf_total"] = df.loc[comp_name, fg_mf_cols].sum()
-    print("\tInfo: name_to_properties ", comp_name)
-    return df
+        assert residual_fgs <= precision_sum_functional_group
+    except AssertionError:
+        print(f"{df.loc[comp_name, cols_fg_mf].sum()=}")
+        print(
+            f"the total mass fraction of functional groups in {comp_name =} is > 0.05"
+        )
+    if residual_fgs < -precision_sum_functional_group:
+        df.at[comp_name, "fg_mf_unclassified"] = abs(residual_fgs)
+    df.loc[df["iupac_name"] != "unidentified"] = df.loc[
+        df["iupac_name"] != "unidentified"
+    ].fillna(0)
+    return _order_columns_in_compounds_properties(df)
 
 
+# %%
 def get_iupac_from_pcp(comp_name: str) -> str:
+    """get iupac name for compound using pubchempy, needs internet connection
+
+    :param comp_name: _description_
+    :type comp_name: str
+    :return: lowercase iupac name for the compound
+    :rtype: str
+    """
     cond = True
     while cond:  # to deal with HTML issues on server sides (timeouts)
         try:
@@ -786,821 +320,6 @@ def report_difference(rep1, rep2, diff_type="absolute"):
     return dif_ave, dif_std, dif_stdp
 
 
-def _annotate_outliers_in_plot(ax, df_ave, df_std, y_lim):
-    """
-    Annotates the bars in a bar plot with their average value and standard
-    deviation if these values exceed the specified y-axis limits.
-    The function iterates over the bars in the plot and checks if their average
-    values, considering their standard deviations, are outside the provided
-    y-axis limits. For such bars, it annotates the average and standard
-    deviation on the
-    plot, using a specific format for better visualization and understanding.
-
-    Parameters
-    ----------
-    ax : matplotlib.axes.Axes
-        The matplotlib Axes object where the plot is drawn.
-    df_ave : pandas.DataFrame
-        DataFrame containing the average values used in the plot.
-    df_std : pandas.DataFrame
-        DataFrame containing the standard deviation values corresponding
-        to df_ave.
-    y_lim : list of [float, float]
-        A list of two floats representing the minimum (y_lim[0]) and
-        maximum (y_lim[1]) limits of the y-axis.
-
-    Returns
-    -------
-    None
-        Modifies the provided Axes object (ax) by adding annotations.
-
-    """
-    dx = 0.15 * len(df_ave.index)
-    dy = 0.04
-    tform = blended_transform_factory(ax.transData, ax.transAxes)
-    dfao = pd.DataFrame(columns=["H/L", "xpos", "ypos", "ave", "std", "text"])
-    dfao["ave"] = df_ave.transpose().to_numpy().flatten().tolist()
-    if df_std.empty:
-        df_std = np.zeros(len(dfao["ave"]))
-    else:
-        dfao["std"] = df_std.transpose().to_numpy().flatten().tolist()
-    try:
-        dfao["xpos"] = [p.get_x() + p.get_width() / 2 for p in ax.patches]
-    except ValueError:  # otherwise the masking adds twice the columns
-        dfao["xpos"] = [
-            p.get_x() + p.get_width() / 2 for p in ax.patches[: len(ax.patches) // 2]
-        ]
-    cond = (dfao["ave"] < y_lim[0]) | (dfao["ave"] > y_lim[1])
-    dfao = dfao.drop(dfao[~cond].index)
-    for ao in dfao.index.tolist():  # loop through bars
-        if dfao.loc[ao, "ave"] == float("inf"):
-            dfao.loc[ao, "text"] = "inf"
-            dfao.loc[ao, "H/L"] = "H"
-        elif dfao.loc[ao, "ave"] == float("-inf"):
-            dfao.loc[ao, "text"] = "-inf"
-            dfao.loc[ao, "H/L"] = "L"
-        elif dfao.loc[ao, "ave"] > y_lim[1]:
-            dfao.loc[ao, "H/L"] = "H"
-            dfao.loc[ao, "text"] = "{:.2f}".format(
-                round(dfao.loc[ao, "ave"], 2)
-            ).strip()
-            if (dfao.loc[ao, "std"] != 0) & (~np.isnan(dfao.loc[ao, "std"])):
-                dfao.loc[ao, "text"] += r"$\pm$" + "{:.2f}".format(
-                    round(dfao.loc[ao, "std"], 2)
-                )
-        elif dfao.loc[ao, "ave"] < y_lim[0]:
-            dfao.loc[ao, "H/L"] = "L"
-            dfao.loc[ao, "text"] = str(round(dfao.loc[ao, "ave"], 2)).strip()
-            if dfao.loc[ao, "std"] != 0:
-                dfao.loc[ao, "text"] += r"$\pm$" + "{:.2f}".format(
-                    round(dfao.loc[ao, "std"], 2)
-                )
-        else:
-            print("Something is wrong", dfao.loc[ao, "ave"])
-    for hl, ypos, dy in zip(["L", "H"], [0.02, 0.98], [0.04, -0.04]):
-        dfao1 = dfao[dfao["H/L"] == hl]
-        dfao1["ypos"] = ypos
-        if not dfao1.empty:
-            dfao1 = dfao1.sort_values("xpos", ascending=True)
-            dfao1["diffx"] = (
-                np.diff(dfao1["xpos"].values, prepend=dfao1["xpos"].values[0]) < dx
-            )
-            dfao1.reset_index(inplace=True)
-
-            for i in dfao1.index.tolist()[1:]:
-                dfao1.loc[i, "ypos"] = ypos
-                for e in range(i, 0, -1):
-                    if dfao1.loc[e, "diffx"]:
-                        dfao1.loc[e, "ypos"] += dy
-                    else:
-                        break
-            for ao in dfao1.index.tolist():
-                ax.annotate(
-                    dfao1.loc[ao, "text"],
-                    xy=(dfao1.loc[ao, "xpos"], 0),
-                    xycoords=tform,
-                    textcoords=tform,
-                    xytext=(dfao1.loc[ao, "xpos"], dfao1.loc[ao, "ypos"]),
-                    fontsize=9,
-                    ha="center",
-                    va="center",
-                    bbox={
-                        "boxstyle": "square,pad=0",
-                        "edgecolor": None,
-                        "facecolor": "white",
-                        "alpha": 0.7,
-                    },
-                )
-
-
-class Fragmenter:
-    """
-    Class taken from https://github.com/simonmb/fragmentation_algorithm.
-    The original version of this algorithm was published in:
-    "Flexible Heuristic Algorithm for Automatic Molecule Fragmentation:
-    Application to the UNIFAC Group Contribution Model
-    DOI: 10.1186/s13321-019-0382-39."
-    MIT License
-
-    ...
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
-    """
-
-    # tested with Python 3.8.8 and RDKit version 2021.09.4
-
-    # does a substructure match and then checks whether the match
-    # is adjacent to previous matches
-    @classmethod
-    def get_substruct_matches(
-        cls,
-        mol_searched_for,
-        mol_searched_in,
-        atomIdxs_to_which_new_matches_have_to_be_adjacent,
-    ):
-
-        valid_matches = []
-
-        if mol_searched_in.GetNumAtoms() >= mol_searched_for.GetNumAtoms():
-            matches = mol_searched_in.GetSubstructMatches(mol_searched_for)
-
-            if matches:
-                for match in matches:
-                    add_this_match = True
-                    if len(atomIdxs_to_which_new_matches_have_to_be_adjacent) > 0:
-                        add_this_match = False
-
-                        for i in match:
-                            for neighbor in mol_searched_in.GetAtomWithIdx(
-                                i
-                            ).GetNeighbors():
-                                if (
-                                    neighbor.GetIdx()
-                                    in atomIdxs_to_which_new_matches_have_to_be_adjacent
-                                ):
-                                    add_this_match = True
-                                    break
-
-                    if add_this_match:
-                        valid_matches.append(match)
-
-        return valid_matches
-
-    # count heavier isotopes of hydrogen correctly
-    @classmethod
-    def get_heavy_atom_count(cls, mol):
-        heavy_atom_count = 0
-        for atom in mol.GetAtoms():
-            if atom.GetAtomicNum() != 1:
-                heavy_atom_count += 1
-
-        return heavy_atom_count
-
-    def __init__(
-        self,
-        fragmentation_scheme={},
-        fragmentation_scheme_order=None,
-        match_hydrogens=False,
-        algorithm="",
-        n_atoms_cuttoff=-1,
-        function_to_choose_fragmentation=False,
-        n_max_fragmentations_to_find=-1,
-    ):
-
-        if not type(fragmentation_scheme) is dict:
-            raise TypeError(
-                "fragmentation_scheme must be a dctionary with integers as keys and either strings or list of strings as values."
-            )
-
-        if len(fragmentation_scheme) == 0:
-            raise ValueError("fragmentation_scheme must be provided.")
-
-        if not algorithm in ["simple", "complete", "combined"]:
-            raise ValueError("Algorithm must be either simple ,complete or combined.")
-
-        if algorithm == "simple":
-            if n_max_fragmentations_to_find != -1:
-                raise ValueError(
-                    "Setting n_max_fragmentations_to_find only makes sense with complete or combined algorithm."
-                )
-
-        self.algorithm = algorithm
-
-        if algorithm in ["combined", "complete"]:
-            if n_atoms_cuttoff == -1:
-                raise ValueError(
-                    "n_atoms_cuttoff needs to be specified for complete or combined algorithms."
-                )
-
-            if function_to_choose_fragmentation == False:
-                raise ValueError(
-                    "function_to_choose_fragmentation needs to be specified for complete or combined algorithms."
-                )
-
-            if not callable(function_to_choose_fragmentation):
-                raise TypeError(
-                    "function_to_choose_fragmentation needs to be a function."
-                )
-            else:
-                if type(function_to_choose_fragmentation([{}, {}])) != dict:
-                    raise TypeError(
-                        "function_to_choose_fragmentation needs to take a list of fragmentations and choose one of it"
-                    )
-
-            if n_max_fragmentations_to_find != -1:
-                if n_max_fragmentations_to_find < 1:
-                    raise ValueError(
-                        "n_max_fragmentations_to_find has to be 1 or higher."
-                    )
-
-        if fragmentation_scheme_order is None:
-            fragmentation_scheme_order = []
-
-        if algorithm in ["simple", "combined"]:
-            assert len(fragmentation_scheme) == len(fragmentation_scheme_order)
-        else:
-            fragmentation_scheme_order = [key for key in fragmentation_scheme.keys()]
-
-        self.n_max_fragmentations_to_find = n_max_fragmentations_to_find
-
-        self.n_atoms_cuttoff = n_atoms_cuttoff
-
-        self.match_hydrogens = match_hydrogens
-
-        self.fragmentation_scheme = fragmentation_scheme
-
-        self.function_to_choose_fragmentation = function_to_choose_fragmentation
-
-        # create a lookup dictionaries to faster finding a group number
-        self._fragmentation_scheme_group_number_lookup = {}
-        self._fragmentation_scheme_pattern_lookup = {}
-        self.fragmentation_scheme_order = fragmentation_scheme_order
-
-        for group_number, list_SMARTS in fragmentation_scheme.items():
-
-            if type(list_SMARTS) is not list:
-                list_SMARTS = [list_SMARTS]
-
-            for SMARTS in list_SMARTS:
-                if SMARTS != "":
-                    self._fragmentation_scheme_group_number_lookup[SMARTS] = (
-                        group_number
-                    )
-
-                    mol_SMARTS = Chem.MolFromSmarts(SMARTS)
-                    self._fragmentation_scheme_pattern_lookup[SMARTS] = mol_SMARTS
-
-    def fragment(self, SMILES_or_molecule):
-
-        if type(SMILES_or_molecule) is str:
-            mol_SMILES = Chem.MolFromSmiles(SMILES_or_molecule)
-            mol_SMILES = Chem.AddHs(mol_SMILES) if self.match_hydrogens else mol_SMILES
-            is_valid_SMILES = mol_SMILES is not None
-
-            if not is_valid_SMILES:
-                raise ValueError("Following SMILES is not valid: " + SMILES_or_molecule)
-
-        else:
-            mol_SMILES = SMILES_or_molecule
-
-        # iterate over all separated molecules
-        success = []
-        fragmentation = {}
-        fragmentation_matches = {}
-        for mol in rdmolops.GetMolFrags(mol_SMILES, asMols=True):
-
-            this_mol_fragmentation, this_mol_success = self.__get_fragmentation(mol)
-
-            for SMARTS, matches in this_mol_fragmentation.items():
-                group_number = self._fragmentation_scheme_group_number_lookup[SMARTS]
-
-                if not group_number in fragmentation:
-                    fragmentation[group_number] = 0
-                    fragmentation_matches[group_number] = []
-
-                fragmentation[group_number] += len(matches)
-                fragmentation_matches[group_number].extend(matches)
-
-            success.append(this_mol_success)
-
-        return fragmentation, all(success), fragmentation_matches
-
-    def fragment_complete(self, SMILES_or_molecule):
-
-        if type(SMILES_or_molecule) is str:
-            mol_SMILES = Chem.MolFromSmiles(SMILES_or_molecule)
-            mol_SMILES = Chem.AddHs(mol_SMILES) if self.match_hydrogens else mol_SMILES
-            is_valid_SMILES = mol_SMILES is not None
-
-            if not is_valid_SMILES:
-                raise ValueError("Following SMILES is not valid: " + SMILES_or_molecule)
-
-        else:
-            mol_SMILES = SMILES_or_molecule
-
-        if len(rdmolops.GetMolFrags(mol_SMILES)) != 1:
-            raise ValueError(
-                "fragment_complete does not accept multifragment molecules."
-            )
-
-        temp_fragmentations, success = self.__complete_fragmentation(mol_SMILES)
-
-        fragmentations = []
-        fragmentations_matches = []
-        for temp_fragmentation in temp_fragmentations:
-            fragmentation = {}
-            fragmentation_matches = {}
-            for SMARTS, matches in temp_fragmentation.items():
-                group_number = self._fragmentation_scheme_group_number_lookup[SMARTS]
-
-                fragmentation[group_number] = len(matches)
-                fragmentation_matches[group_number] = matches
-
-            fragmentations.append(fragmentation)
-            fragmentations_matches.append(fragmentation_matches)
-
-        return fragmentations, success, fragmentations_matches
-
-    def __get_fragmentation(self, mol_SMILES):
-
-        success = False
-        fragmentation = {}
-        if self.algorithm in ["simple", "combined"]:
-            fragmentation, success = self.__simple_fragmentation(mol_SMILES)
-
-        if success:
-            return fragmentation, success
-
-        if self.algorithm in ["combined", "complete"]:
-            fragmentations, success = self.__complete_fragmentation(mol_SMILES)
-
-            if success:
-                fragmentation = self.function_to_choose_fragmentation(fragmentations)
-
-        return fragmentation, success
-
-    def __simple_fragmentation(self, mol_SMILES):
-
-        if self.match_hydrogens:
-            target_atom_count = len(mol_SMILES.GetAtoms())
-        else:
-            target_atom_count = Fragmenter.get_heavy_atom_count(mol_SMILES)
-
-        success = False
-        fragmentation = {}
-
-        fragmentation, atomIdxs_included_in_fragmentation = (
-            self.__search_non_overlapping_solution(mol_SMILES, {}, set(), set())
-        )
-        success = len(atomIdxs_included_in_fragmentation) == target_atom_count
-
-        # if not successful, clean up molecule and search again
-        level = 1
-        while not success:
-            fragmentation_so_far, atomIdxs_included_in_fragmentation_so_far = (
-                Fragmenter.__clean_molecule_surrounding_unmatched_atoms(
-                    mol_SMILES, fragmentation, atomIdxs_included_in_fragmentation, level
-                )
-            )
-            level += 1
-
-            if len(atomIdxs_included_in_fragmentation_so_far) == 0:
-                break
-
-            fragmentation_so_far, atomIdxs_included_in_fragmentation_so_far = (
-                self.__search_non_overlapping_solution(
-                    mol_SMILES,
-                    fragmentation_so_far,
-                    atomIdxs_included_in_fragmentation_so_far,
-                    atomIdxs_included_in_fragmentation_so_far,
-                )
-            )
-
-            success = (
-                len(atomIdxs_included_in_fragmentation_so_far) == target_atom_count
-            )
-
-            if success:
-                fragmentation = fragmentation_so_far
-
-        return fragmentation, success
-
-    def __search_non_overlapping_solution(
-        self,
-        mol_searched_in,
-        fragmentation,
-        atomIdxs_included_in_fragmentation,
-        atomIdxs_to_which_new_matches_have_to_be_adjacent,
-    ):
-
-        n_atomIdxs_included_in_fragmentation = (
-            len(atomIdxs_included_in_fragmentation) - 1
-        )
-
-        while n_atomIdxs_included_in_fragmentation != len(
-            atomIdxs_included_in_fragmentation
-        ):
-            n_atomIdxs_included_in_fragmentation = len(
-                atomIdxs_included_in_fragmentation
-            )
-
-            for group_number in self.fragmentation_scheme_order:
-                list_SMARTS = self.fragmentation_scheme[group_number]
-                if type(list_SMARTS) is not list:
-                    list_SMARTS = [list_SMARTS]
-
-                for SMARTS in list_SMARTS:
-                    if SMARTS != "":
-                        fragmentation, atomIdxs_included_in_fragmentation = (
-                            self.__get_next_non_overlapping_match(
-                                mol_searched_in,
-                                SMARTS,
-                                fragmentation,
-                                atomIdxs_included_in_fragmentation,
-                                atomIdxs_to_which_new_matches_have_to_be_adjacent,
-                            )
-                        )
-
-        return fragmentation, atomIdxs_included_in_fragmentation
-
-    def __get_next_non_overlapping_match(
-        self,
-        mol_searched_in,
-        SMARTS,
-        fragmentation,
-        atomIdxs_included_in_fragmentation,
-        atomIdxs_to_which_new_matches_have_to_be_adjacent,
-    ):
-
-        mol_searched_for = self._fragmentation_scheme_pattern_lookup[SMARTS]
-
-        if atomIdxs_to_which_new_matches_have_to_be_adjacent:
-            matches = Fragmenter.get_substruct_matches(
-                mol_searched_for,
-                mol_searched_in,
-                atomIdxs_to_which_new_matches_have_to_be_adjacent,
-            )
-        else:
-            matches = Fragmenter.get_substruct_matches(
-                mol_searched_for, mol_searched_in, set()
-            )
-
-        if matches:
-            for match in matches:
-                all_atoms_of_new_match_are_unassigned = (
-                    atomIdxs_included_in_fragmentation.isdisjoint(match)
-                )
-
-                if all_atoms_of_new_match_are_unassigned:
-                    if not SMARTS in fragmentation:
-                        fragmentation[SMARTS] = []
-
-                    fragmentation[SMARTS].append(match)
-                    atomIdxs_included_in_fragmentation.update(match)
-
-        return fragmentation, atomIdxs_included_in_fragmentation
-
-    @classmethod
-    def __clean_molecule_surrounding_unmatched_atoms(
-        cls, mol_searched_in, fragmentation, atomIdxs_included_in_fragmentation, level
-    ):
-
-        for i in range(0, level):
-
-            atoms_missing = set(
-                range(0, Fragmenter.get_heavy_atom_count(mol_searched_in))
-            ).difference(atomIdxs_included_in_fragmentation)
-
-            new_fragmentation = marshal.loads(marshal.dumps(fragmentation))
-
-            for atomIdx in atoms_missing:
-                for neighbor in mol_searched_in.GetAtomWithIdx(atomIdx).GetNeighbors():
-                    for smart, atoms_found in fragmentation.items():
-                        for atoms in atoms_found:
-                            if neighbor.GetIdx() in atoms:
-                                if smart in new_fragmentation:
-                                    if new_fragmentation[smart].count(atoms) > 0:
-                                        new_fragmentation[smart].remove(atoms)
-
-                        if smart in new_fragmentation:
-                            if len(new_fragmentation[smart]) == 0:
-                                new_fragmentation.pop(smart)
-
-            new_atomIdxs_included_in_fragmentation = set()
-            for i in new_fragmentation.values():
-                for j in i:
-                    new_atomIdxs_included_in_fragmentation.update(j)
-
-            atomIdxs_included_in_fragmentation = new_atomIdxs_included_in_fragmentation
-            fragmentation = new_fragmentation
-
-        return fragmentation, atomIdxs_included_in_fragmentation
-
-    def __complete_fragmentation(self, mol_SMILES):
-
-        heavy_atom_count = Fragmenter.get_heavy_atom_count(mol_SMILES)
-
-        if heavy_atom_count > self.n_atoms_cuttoff:
-            return {}, False
-
-        completed_fragmentations = []
-        groups_leading_to_incomplete_fragmentations = []
-        (
-            completed_fragmentations,
-            groups_leading_to_incomplete_fragmentations,
-            incomplete_fragmentation_found,
-        ) = self.__get_next_non_overlapping_adjacent_match_recursively(
-            mol_SMILES,
-            heavy_atom_count,
-            completed_fragmentations,
-            groups_leading_to_incomplete_fragmentations,
-            {},
-            set(),
-            set(),
-            self.n_max_fragmentations_to_find,
-        )
-        success = len(completed_fragmentations) > 0
-
-        return completed_fragmentations, success
-
-    def __get_next_non_overlapping_adjacent_match_recursively(
-        self,
-        mol_searched_in,
-        heavy_atom_count,
-        completed_fragmentations,
-        groups_leading_to_incomplete_fragmentations,
-        fragmentation_so_far,
-        atomIdxs_included_in_fragmentation_so_far,
-        atomIdxs_to_which_new_matches_have_to_be_adjacent,
-        n_max_fragmentations_to_find=-1,
-    ):
-
-        n_completed_fragmentations = len(completed_fragmentations)
-        incomplete_fragmentation_found = False
-        complete_fragmentation_found = False
-
-        if len(completed_fragmentations) == n_max_fragmentations_to_find:
-            return (
-                completed_fragmentations,
-                groups_leading_to_incomplete_fragmentations,
-                incomplete_fragmentation_found,
-            )
-
-        for group_number in self.fragmentation_scheme_order:
-            list_SMARTS = self.fragmentation_scheme[group_number]
-
-            if complete_fragmentation_found:
-                break
-
-            if type(list_SMARTS) is not list:
-                list_SMARTS = [list_SMARTS]
-
-            for SMARTS in list_SMARTS:
-                if complete_fragmentation_found:
-                    break
-
-                if SMARTS != "":
-                    matches = Fragmenter.get_substruct_matches(
-                        self._fragmentation_scheme_pattern_lookup[SMARTS],
-                        mol_searched_in,
-                        atomIdxs_included_in_fragmentation_so_far,
-                    )
-
-                    for match in matches:
-
-                        # only allow non-overlapping matches
-                        all_atoms_are_unassigned = (
-                            atomIdxs_included_in_fragmentation_so_far.isdisjoint(match)
-                        )
-                        if not all_atoms_are_unassigned:
-                            continue
-
-                        # only allow matches that do not contain groups leading to incomplete matches
-                        for (
-                            groups_leading_to_incomplete_fragmentation
-                        ) in groups_leading_to_incomplete_fragmentations:
-                            if Fragmenter.__is_fragmentation_subset_of_other_fragmentation(
-                                groups_leading_to_incomplete_fragmentation,
-                                fragmentation_so_far,
-                            ):
-                                return (
-                                    completed_fragmentations,
-                                    groups_leading_to_incomplete_fragmentations,
-                                    incomplete_fragmentation_found,
-                                )
-
-                        # only allow matches that will lead to new fragmentations
-                        use_this_match = True
-                        n_found_groups = len(fragmentation_so_far)
-
-                        for completed_fragmentation in completed_fragmentations:
-
-                            if not SMARTS in completed_fragmentation:
-                                continue
-
-                            if n_found_groups == 0:
-                                use_this_match = not Fragmenter.__is_match_contained_in_fragmentation(
-                                    match, SMARTS, completed_fragmentation
-                                )
-                            else:
-                                if Fragmenter.__is_fragmentation_subset_of_other_fragmentation(
-                                    fragmentation_so_far, completed_fragmentation
-                                ):
-                                    use_this_match = not Fragmenter.__is_match_contained_in_fragmentation(
-                                        match, SMARTS, completed_fragmentation
-                                    )
-
-                            if not use_this_match:
-                                break
-
-                        if not use_this_match:
-                            continue
-
-                        # make a deepcopy here, otherwise the variables are modified down the road
-                        # marshal is used here because it works faster than copy.deepcopy
-                        this_SMARTS_fragmentation_so_far = marshal.loads(
-                            marshal.dumps(fragmentation_so_far)
-                        )
-                        this_SMARTS_atomIdxs_included_in_fragmentation_so_far = (
-                            atomIdxs_included_in_fragmentation_so_far.copy()
-                        )
-
-                        if not SMARTS in this_SMARTS_fragmentation_so_far:
-                            this_SMARTS_fragmentation_so_far[SMARTS] = []
-
-                        this_SMARTS_fragmentation_so_far[SMARTS].append(match)
-                        this_SMARTS_atomIdxs_included_in_fragmentation_so_far.update(
-                            match
-                        )
-
-                        # only allow matches that do not contain groups leading to incomplete matches
-                        for (
-                            groups_leading_to_incomplete_match
-                        ) in groups_leading_to_incomplete_fragmentations:
-                            if Fragmenter.__is_fragmentation_subset_of_other_fragmentation(
-                                groups_leading_to_incomplete_match,
-                                this_SMARTS_fragmentation_so_far,
-                            ):
-                                use_this_match = False
-                                break
-
-                        if not use_this_match:
-                            continue
-
-                        # if the complete molecule has not been fragmented, continue to do so
-                        if (
-                            len(this_SMARTS_atomIdxs_included_in_fragmentation_so_far)
-                            < heavy_atom_count
-                        ):
-                            (
-                                completed_fragmentations,
-                                groups_leading_to_incomplete_fragmentations,
-                                incomplete_fragmentation_found,
-                            ) = self.__get_next_non_overlapping_adjacent_match_recursively(
-                                mol_searched_in,
-                                heavy_atom_count,
-                                completed_fragmentations,
-                                groups_leading_to_incomplete_fragmentations,
-                                this_SMARTS_fragmentation_so_far,
-                                this_SMARTS_atomIdxs_included_in_fragmentation_so_far,
-                                this_SMARTS_atomIdxs_included_in_fragmentation_so_far,
-                                n_max_fragmentations_to_find,
-                            )
-                            break
-
-                        # if the complete molecule has been fragmented, save and return
-                        if (
-                            len(this_SMARTS_atomIdxs_included_in_fragmentation_so_far)
-                            == heavy_atom_count
-                        ):
-                            completed_fragmentations.append(
-                                this_SMARTS_fragmentation_so_far
-                            )
-                            complete_fragmentation_found = True
-                            break
-
-        # if until here no new fragmentation was found check whether an incomplete fragmentation was found
-        if n_completed_fragmentations == len(completed_fragmentations):
-
-            if not incomplete_fragmentation_found:
-
-                incomplete_matched_groups = {}
-
-                if len(atomIdxs_included_in_fragmentation_so_far) > 0:
-                    unassignes_atom_idx = set(range(0, heavy_atom_count)).difference(
-                        atomIdxs_included_in_fragmentation_so_far
-                    )
-                    for atom_idx in unassignes_atom_idx:
-                        neighbor_atoms_idx = [
-                            i.GetIdx()
-                            for i in mol_searched_in.GetAtomWithIdx(
-                                atom_idx
-                            ).GetNeighbors()
-                        ]
-
-                        for neighbor_atom_idx in neighbor_atoms_idx:
-                            for (
-                                found_smarts,
-                                found_matches,
-                            ) in fragmentation_so_far.items():
-                                for found_match in found_matches:
-                                    if neighbor_atom_idx in found_match:
-                                        if (
-                                            not found_smarts
-                                            in incomplete_matched_groups
-                                        ):
-                                            incomplete_matched_groups[found_smarts] = []
-
-                                        if (
-                                            found_match
-                                            not in incomplete_matched_groups[
-                                                found_smarts
-                                            ]
-                                        ):
-                                            incomplete_matched_groups[
-                                                found_smarts
-                                            ].append(found_match)
-
-                    is_subset_of_groups_already_found = False
-                    indexes_to_remove = []
-
-                    for idx, groups_leading_to_incomplete_match in enumerate(
-                        groups_leading_to_incomplete_fragmentations
-                    ):
-                        is_subset_of_groups_already_found = (
-                            Fragmenter.__is_fragmentation_subset_of_other_fragmentation(
-                                incomplete_matched_groups,
-                                groups_leading_to_incomplete_match,
-                            )
-                        )
-                        if is_subset_of_groups_already_found:
-                            indexes_to_remove.append(idx)
-
-                    for index in sorted(indexes_to_remove, reverse=True):
-                        del groups_leading_to_incomplete_fragmentations[index]
-
-                    groups_leading_to_incomplete_fragmentations.append(
-                        incomplete_matched_groups
-                    )
-                    groups_leading_to_incomplete_fragmentations = sorted(
-                        groups_leading_to_incomplete_fragmentations, key=len
-                    )
-
-                    incomplete_fragmentation_found = True
-
-        return (
-            completed_fragmentations,
-            groups_leading_to_incomplete_fragmentations,
-            incomplete_fragmentation_found,
-        )
-
-    @classmethod
-    def __is_fragmentation_subset_of_other_fragmentation(
-        cls, fragmentation, other_fragmentation
-    ):
-        n_found_groups = len(fragmentation)
-        n_found_other_groups = len(other_fragmentation)
-
-        if n_found_groups == 0:
-            return False
-
-        if n_found_other_groups < n_found_groups:
-            return False
-
-        n_found_SMARTS_that_are_subset = 0
-        for found_SMARTS, _ in fragmentation.items():
-            if found_SMARTS in other_fragmentation:
-                found_matches_set = set(
-                    frozenset(i) for i in fragmentation[found_SMARTS]
-                )
-                found_other_matches_set = set(
-                    frozenset(i) for i in other_fragmentation[found_SMARTS]
-                )
-
-                if found_matches_set.issubset(found_other_matches_set):
-                    n_found_SMARTS_that_are_subset += 1
-            else:
-                return False
-
-        return n_found_SMARTS_that_are_subset == n_found_groups
-
-    @classmethod
-    def __is_match_contained_in_fragmentation(cls, match, SMARTS, fragmentation):
-        if not SMARTS in fragmentation:
-            return False
-
-        found_matches_set = set(frozenset(i) for i in fragmentation[SMARTS])
-        match_set = set(match)
-
-        return match_set in found_matches_set
-
-
 class Project:
     """the class that contains all method and info to analyze
     the project (intended as a collection of GCMS files, calibrations, etc)
@@ -1635,10 +354,9 @@ class Project:
     }
     acceptable_params: list[str] = list(param_to_axis_label.keys())
     string_in_deriv_names: list[str] = [
-        "deriv.",
-        "derivative",
-        "TMS",
-        "TBDMS",
+        "deriv",
+        "tms",
+        "tbms",
         "trimethylsilyl",
     ]
     string_in_deriv_names = [s.lower() for s in string_in_deriv_names]
@@ -2093,20 +811,22 @@ class Project:
         """Attempts to load the 'compounds_properties.xlsx' file containing physical
         and chemical properties of compounds. If not found, it creates a new properties
         DataFrame and updates the 'compounds_properties_created' attribute."""
-        try:
+        compounds_properties_path = plib.Path(
+            Project.in_path, "compounds_properties.xlsx"
+        )
+        if compounds_properties_path.exists():
             cpdf = pd.read_excel(
-                plib.Path(Project.in_path, "compounds_properties.xlsx"),
+                compounds_properties_path,
                 index_col="comp_name",
             )
-            cpdf = self._order_columns_in_compounds_properties(cpdf)
-            cpdf = cpdf.fillna(0)
+            # cpdf = _order_columns_in_compounds_properties(cpdf)
+            # cpdf = cpdf.fillna(0)
             self.compounds_properties = cpdf
             self.compounds_properties_created = True
             print("Info: compounds_properties loaded")
-        except FileNotFoundError:
+        else:
             print("Warning: compounds_properties.xlsx not found, creating it")
             cpdf = self.create_compounds_properties()
-
         return self.compounds_properties
 
     def load_deriv_compounds_properties(self):
@@ -2114,17 +834,20 @@ class Project:
         for derivatized compounds. If not found, it creates a new properties DataFrame
         for derivatized compounds and updates the 'deriv_compounds_properties_created' attribute.
         """
-        try:
+        compounds_deriv_properties_path = plib.Path(
+            Project.in_path, "deriv_compounds_properties.xlsx"
+        )
+        if compounds_deriv_properties_path.exists():
             dcpdf = pd.read_excel(
-                plib.Path(Project.in_path, "deriv_compounds_properties.xlsx"),
+                compounds_deriv_properties_path,
                 index_col="comp_name",
             )
-            dcpdf = self._order_columns_in_compounds_properties(dcpdf)
-            dcpdf = dcpdf.fillna(0)
+            # dcpdf = _order_columns_in_compounds_properties(dcpdf)
+            # cpdf = dcpdf.fillna(0)
             self.deriv_compounds_properties = dcpdf
             self.deriv_compounds_properties_created = True
             print("Info: deriv_compounds_properties loaded")
-        except FileNotFoundError:
+        else:
             print("Warning: deriv_compounds_properties.xlsx not found, creating it")
             dcpdf = self.create_deriv_compounds_properties()
         return self.deriv_compounds_properties
@@ -2139,18 +862,20 @@ class Project:
             self.load_class_code_frac()
         if not self.list_of_all_compounds_created:
             self.create_list_of_all_compounds()
-        cpdf = pd.DataFrame(index=pd.Index(self.list_of_all_compounds))
-        cpdf.index.name = "comp_name"
+        # cpdf = pd.DataFrame(index=pd.Index(self.list_of_all_compounds))
+        #
+        cpdf = pd.DataFrame()
         print("Info: create_compounds_properties: looping over names")
-        for name in cpdf.index:
+        for name in self.list_of_all_compounds:
             cpdf = name_to_properties(
-                name,
-                cpdf,
-                self.dict_classes_to_codes,
-                self.dict_classes_to_mass_fractions,
+                comp_name=name,
+                dict_classes_to_codes=self.dict_classes_to_codes,
+                dict_classes_to_mass_fractions=self.dict_classes_to_mass_fractions,
+                df=cpdf,
             )
-        cpdf = self._order_columns_in_compounds_properties(cpdf)
-        cpdf = cpdf.fillna(0)
+        # cpdf = self._order_columns_in_compounds_properties(cpdf)
+        # cpdf = cpdf.fillna(0)
+        cpdf.index.name = "comp_name"
         self.compounds_properties = cpdf
         self.compounds_properties_created = True
         # save db in the project folder in the input
@@ -2169,81 +894,53 @@ class Project:
             self.load_class_code_frac()
         if not self.list_of_all_deriv_compounds_created:
             self.create_list_of_all_deriv_compounds()
-
-        old_unique_deriv_compounds = self.list_of_all_deriv_compounds
-        # unique_underiv_compounds = [
-        #     ",".join(name.split(",")[:-1]) for name in unique_deriv_compounds
-        # ]
-        unique_deriv_compounds = []
-        unique_underiv_compounds = []
-        for name in old_unique_deriv_compounds:
-            underiv_name = ",".join(name.split(",")[:-1])
-            deriv_string = name.split(",")[-1]
-            if underiv_name == "":
-                underiv_name = name
-            else:
-                if any([der in deriv_string for der in Project.string_in_deriv_names]):
-                    unique_deriv_compounds.append(name)
-                    unique_underiv_compounds.append(underiv_name)
-        dcpdf = pd.DataFrame(index=pd.Index(unique_underiv_compounds))
-        dcpdf.index.name = "comp_name"
-        dcpdf["deriv_comp_name"] = unique_deriv_compounds
-        print("Info: create_deriv_compounds_properties: looping over names")
-        for name in dcpdf.index:
-            dcpdf = name_to_properties(
-                name,
-                dcpdf,
-                self.dict_classes_to_codes,
-                self.dict_classes_to_mass_fractions,
+        deriv_to_underiv = {}
+        for derivname in self.list_of_all_deriv_compounds:
+            parts = derivname.split(",")
+            is_der_str_in_part2: bool = any(
+                [
+                    der_str in parts[-1].strip()
+                    for der_str in Project.string_in_deriv_names
+                ]
             )
-        # remove duplicates that may come from the "made up" name in calibration
-        # dcpdf = dcpdf.drop_duplicates(subset='iupac_name')
-        dcpdf["underiv_comp_name"] = dcpdf.index
-        dcpdf.set_index("deriv_comp_name", inplace=True)
-        dcpdf.index.name = "comp_name"
-        dcpdf = self._order_columns_in_compounds_properties(dcpdf)
-        dcpdf = dcpdf.fillna(0)
+            if len(parts) > 1 and is_der_str_in_part2:
+                # If the suffix is a known derivatization, use the part before the comma
+                deriv_to_underiv[derivname] = ",".join(parts[:-1])
+            else:
+                # In all other cases, mark as "unidentified"
+                deriv_to_underiv[derivname] = "unidentified"
+        print("Info: create_deriv_compounds_properties: looping over names")
+        underiv_comps_to_search_for = [
+            c for c in deriv_to_underiv.values() if c != "unidentified"
+        ]
+        dcpdf = pd.DataFrame()
+        for name in underiv_comps_to_search_for:
+            dcpdf = name_to_properties(
+                comp_name=name,
+                dict_classes_to_codes=self.dict_classes_to_codes,
+                dict_classes_to_mass_fractions=self.dict_classes_to_mass_fractions,
+                df=dcpdf,
+            )
+        dcpdf.index.name = "underiv_comp_name"
+        dcpdf.reset_index(inplace=True)
+        underiv_to_deriv = {
+            v: k for k, v in deriv_to_underiv.items() if v != "unidentified"
+        }
+        # Add a new column for the derivatized compound names
+        # If a name is not in the underiv_to_deriv (thus 'unidentified'), it will get a value of NaN
+
+        dcpdf["comp_name"] = dcpdf["underiv_comp_name"].apply(
+            lambda x: underiv_to_deriv.get(x, "unidentified")
+        )
+        dcpdf.set_index("comp_name", inplace=True)
         # save db in the project folder in the input
         self.deriv_compounds_properties = dcpdf
         dcpdf.to_excel(plib.Path(Project.in_path, "deriv_compounds_properties.xlsx"))
         self.compounds_properties_created = True
         print(
-            "Info: create_deriv_compounds_properties:"
-            + "deriv_compounds_properties created and saved"
+            "Info: create_deriv_compounds_properties: deriv_compounds_properties created and saved"
         )
         return self.deriv_compounds_properties
-
-    def _order_columns_in_compounds_properties(self, comp_df):
-        ord_cols1, ord_cols2, ord_cols3, ord_cols4, ord_cols5, ord_cols6 = (
-            [],
-            [],
-            [],
-            [],
-            [],
-            [],
-        )
-        for c in comp_df.columns:
-            if not c.startswith(("el_", "fg_")):
-                ord_cols1.append(c)
-            elif c.startswith("el_mf"):
-                ord_cols3.append(c)
-            elif c.startswith("el_"):
-                ord_cols2.append(c)
-            elif c.startswith("fg_mf_total"):
-                ord_cols6.append(c)
-            elif c.startswith("fg_mf"):
-                ord_cols5.append(c)
-            elif c.startswith("fg_"):
-                ord_cols4.append(c)
-        comp_df = comp_df[
-            ord_cols1
-            + sorted(ord_cols2)
-            + sorted(ord_cols3)
-            + sorted(ord_cols4)
-            + sorted(ord_cols5)
-            + sorted(ord_cols6)
-        ]
-        return comp_df
 
     # def add_iupac_to_calibrations(self):
     #     """Adds the IUPAC name to each compound in the calibration data,
@@ -2862,128 +1559,6 @@ class Project:
             self.save_samples_param_aggrrep(param=param)
         return self.samples_aggrreps[param], self.samples_aggrreps_std[param]
 
-    # def create_samples_param_report(self, param="conc_vial_mg_L"):
-    #     """Creates a detailed report for each parameter across all SAMPLES,
-    #     displaying the concentration of each compound in each sample.
-    #     This report aids in the analysis and comparison of compound
-    #     concentrations across SAMPLES."""
-    #     print("Info: create_param_report: ", param)
-    #     if param not in Project.acceptable_params:
-    #         raise ValueError(f"{param = } is not an acceptable param")
-    #     if not self.samples_created:
-    #         self.create_samples_from_files()
-    #     _all_comps = self.compounds_properties["iupac_name"].tolist()
-    #     if self.deriv_files_present:
-    #         _all_comps += self.deriv_compounds_properties["iupac_name"].tolist()
-    #     rep = pd.DataFrame(
-    #         index=list(set(_all_comps)),
-    #         columns=list(self.samples_info.index),
-    #         dtype="float",
-    #     )
-    #     rep_std = pd.DataFrame(
-    #         index=list(set(_all_comps)),
-    #         columns=list(self.samples_info.index),
-    #         dtype="float",
-    #     )
-    #     rep.index.name, rep_std.index.name = param, param
-
-    #     for comp in rep.index.tolist():  # add conc values
-    #         for samplename in rep.columns.tolist():
-    #             smp = self.samples[samplename].set_index("iupac_name")
-    #             try:
-    #                 ave = smp.loc[comp, param]
-    #             except KeyError:
-    #                 ave = 0
-    #             smp_std = self.samples_std[samplename].set_index("iupac_name")
-    #             try:
-    #                 std = smp_std.loc[comp, param]
-    #             except KeyError:
-    #                 std = np.nan
-    #             rep.loc[comp, samplename] = ave
-    #             rep_std.loc[comp, samplename] = std
-
-    #     rep = rep.sort_index(key=rep.max(1).get, ascending=False)
-    #     rep = rep.loc[:, rep.any(axis=0)]  # drop columns with only 0s
-    #     rep = rep.loc[rep.any(axis=1), :]  # drop rows with only 0s
-    #     rep_std = rep_std.reindex(rep.index)
-    #     self.samples_reports[param] = rep
-    #     self.samples_reports_std[param] = rep_std
-    #     self.list_of_samples_param_reports.append(param)
-    #     if Project.auto_save_to_excel:
-    #         self.save_samples_param_report(param=param)
-    #     return rep, rep_std
-
-    # def create_samples_param_aggrrep(self, param="conc_vial_mg_L"):
-    #     """Aggregates compound concentration data by functional group for each
-    #     parameter across all SAMPLES, providing a summarized view of functional
-    #     group concentrations. This aggregation facilitates the understanding
-    #     of functional group distribution across SAMPLES."""
-    #     print("Info: create_param_aggrrep: ", param)
-    #     if param not in Project.acceptable_params:
-    #         raise ValueError(f"{param = } is not an acceptable param")
-    #     if param not in self.list_of_samples_param_reports:
-    #         self.create_samples_param_report(param)
-    #     # fg = functional groups, mf = mass fraction
-    #     samplenames = self.samples_info.index.tolist()
-    #     _all_comps = self.samples_reports[param].index.tolist()
-    #     cols_with_fg_mf_labs = list(self.compounds_properties)
-    #     if self.deriv_files_present:
-    #         for c in list(self.deriv_compounds_properties):
-    #             if c not in cols_with_fg_mf_labs:
-    #                 cols_with_fg_mf_labs.append(c)
-    #     fg_mf_labs = [
-    #         c
-    #         for c in cols_with_fg_mf_labs
-    #         if c.startswith("fg_mf_")
-    #         if c != "fg_mf_total"
-    #     ]
-    #     fg_labs = [c[6:] for c in fg_mf_labs]
-    #     # create a df with iupac name index and fg_mf columns (underiv and deriv)
-    #     comps_df = self.compounds_properties.set_index("iupac_name")
-    #     if self.deriv_files_present:
-    #         deriv_comps_df = self.deriv_compounds_properties.set_index("iupac_name")
-    #         all_comps_df = pd.concat([comps_df, deriv_comps_df])
-    #     else:
-    #         all_comps_df = comps_df
-    #     all_comps_df = all_comps_df[~all_comps_df.index.duplicated(keep="first")]
-    #     fg_mf_all = pd.DataFrame(index=_all_comps, columns=fg_mf_labs)
-    #     for idx in fg_mf_all.index.tolist():
-    #         fg_mf_all.loc[idx, fg_mf_labs] = all_comps_df.loc[idx, fg_mf_labs]
-    #     # create the aggregated dataframes and compute aggregated results
-    #     aggrrep = pd.DataFrame(columns=samplenames, index=fg_labs, dtype="float")
-    #     aggrrep.index.name = param  # is the parameter
-    #     aggrrep.fillna(0, inplace=True)
-    #     aggrrep_std = pd.DataFrame(columns=samplenames, index=fg_labs, dtype="float")
-    #     aggrrep_std.index.name = param  # is the parameter
-    #     aggrrep_std.fillna(0, inplace=True)
-    #     for col in samplenames:
-    #         list_iupac = self.samples_reports[param].index
-    #         signal = self.samples_reports[param].loc[:, col].values
-    #         signal_std = self.samples_reports_std[param].loc[:, col].values
-    #         for fg, fg_mf in zip(fg_labs, fg_mf_labs):
-    #             # each compound contributes to the cumulative sum of each
-    #             # functional group for the based on the mass fraction it has
-    #             # of that functional group (fg_mf act as weights)
-    #             # if fg_mf in subrep: multiply signal for weight and sum
-    #             # to get aggregated
-    #             weights = fg_mf_all.loc[list_iupac, fg_mf].astype(signal.dtype)
-
-    #             aggrrep.loc[fg, col] = (signal * weights).sum()
-    #             aggrrep_std.loc[fg, col] = (signal_std * weights).sum()
-    #     aggrrep = aggrrep.loc[(aggrrep != 0).any(axis=1), :]  # drop rows with only 0
-    #     aggrrep_std = aggrrep_std.reindex(aggrrep.index)
-    #     aggrrep = aggrrep.sort_index(
-    #         key=aggrrep[samplenames].max(1).get, ascending=False
-    #     )
-    #     aggrrep_std = aggrrep_std.reindex(aggrrep.index)
-
-    #     self.samples_aggrreps[param] = aggrrep
-    #     self.samples_aggrreps_std[param] = aggrrep_std
-    #     self.list_of_samples_param_aggrreps.append(param)
-    #     if Project.auto_save_to_excel:
-    #         self.save_samples_param_aggrrep(param=param)
-    #     return aggrrep, aggrrep_std
-
     def save_files_info(self):
         """Saves the 'files_info' DataFrame as an Excel file in a 'files'
         subfolder within the project's output path,
@@ -3081,366 +1656,3 @@ class Project:
             plib.Path(out_path, name + "_std.xlsx")
         )
         print("Info: save_samples_param_aggrrep: ", name, " saved")
-
-    def plot_ave_std(
-        self,
-        filename: str = "plot",
-        files_or_samples: str = "samples",
-        param: str = "conc_vial_mg_L",
-        aggr: bool = False,
-        min_y_thresh: float | None = None,
-        only_samples_to_plot: list[str] = None,
-        rename_samples: list[str] = None,
-        reorder_samples: list[str] = None,
-        item_to_color_to_hatch: pd.DataFrame | None = None,
-        paper_col=0.8,
-        fig_hgt_mlt=1.5,
-        xlab_rot=0,
-        annotate_outliers=True,
-        color_palette="deep",
-        y_lab=None,
-        y_lim=None,
-        y_ticks=None,
-        yt_sum=False,
-        yt_lim=None,
-        yt_lab=None,
-        yt_ticks=None,
-        yt_sum_label="total\n(right axis)",
-        legend_location="best",
-        legend_columns=1,
-        legend_x_anchor=1,
-        legend_y_anchor=1.02,
-        legend_labelspacing=0.5,
-        annotate_lttrs=False,
-        note_plt=None,
-    ):
-        """
-        Generates a bar plot displaying average values with optional standard deviation
-        bars for a specified parameter from either files or samples. This function allows
-        for detailed customization of the plot, including aggregation by functional groups,
-        filtering based on minimum thresholds, renaming and reordering samples, and applying
-        specific color schemes and hatching patterns to items.
-        Additionally, it supports adjusting plot aesthetics such as size, figure height multiplier,
-        x-label rotation, and outlier annotation. The plot can include a secondary y-axis
-        to display the sum of values, with customizable limits, labels, ticks, and sum label.
-        The legend can be placed inside or outside the plot area, with adjustable location,
-        columns, anchor points, and label spacing. An optional note can be added to the plot
-        for additional context.
-
-        Parameters:
-
-        filename (str): Name for the output plot file. Default is 'plot'.
-
-        files_or_samples (str): Specifies whether to plot data from 'files'
-            or 'samples'. Default is 'samples'.
-
-        param (str): The parameter to plot, such as 'conc_vial_mg_L'.
-            Default is 'conc_vial_mg_L'.
-
-        aggr (bool): Boolean indicating whether to aggregate data by functional groups.
-            Default is False, meaning no aggregation.
-
-        min_y_thresh (float, optional): Minimum y-value threshold for including data in the plot.
-            Default is None, including all data.
-
-        only_samples_to_plot (list, optional): List of samples to include in the plot.
-            Default is None, including all samples.
-
-        rename_samples (dict, optional): Dictionary to rename samples in the plot.
-            Default is None, using original names.
-
-        reorder_samples (list, optional): List specifying the order of samples in the plot.
-            Default is None, using original order.
-
-        item_to_color_to_hatch (DataFrame, optional): DataFrame mapping items to specific colors and hatching patterns.
-            Default is None, using default colors and no hatching.
-
-        paper_col (float): Background color of the plot area. Default is .8, a light grey.
-
-        fig_hgt_mlt (float): Multiplier for the figure height to adjust plot size. Default is 1.5.
-
-        xlab_rot (int): Rotation angle for x-axis labels. Default is 0, meaning no rotation.
-
-        annotate_outliers (bool): Boolean indicating whether to annotate outliers exceeding y_lim.
-            Default is True.
-
-        color_palette (str): Color palette for the plot. Default is 'deep'.
-
-        y_lab (str, optional): Label for the y-axis. Default is None, using parameter name as label.
-
-        y_lim (tuple[float, float], optional): Limits for the y-axis. Default is None, automatically determined.
-
-        y_ticks (list[float], optional): Custom tick marks for the y-axis. Default is None, automatically determined.
-
-        yt_sum (bool): Boolean indicating whether to display a sum on a secondary y-axis. Default is False.
-
-        yt_lim (tuple[float, float], optional): Limits for the secondary y-axis. Default is None, automatically determined.
-
-        yt_lab (str, optional): Label for the secondary y-axis. Default is None, using parameter name as label.
-
-        yt_ticks (list[float], optional): Custom tick marks for the secondary y-axis. Default is None, automatically determined.
-
-        yt_sum_label (str): Label for the sum on the secondary y-axis. Default is 'total (right axis)'.
-
-        legend_location (str): Location of the legend within or outside the plot area. Default is 'best'.
-
-        legend_columns (int): Number of columns in the legend. Default is 1.
-
-        legend_x_anchor (float): X-anchor for the legend when placed outside the plot area. Default is 1.
-
-        legend_y_anchor (float): Y-anchor for the legend when placed outside the plot area. Default is 1.02.
-
-        legend_labelspacing (float): Spacing between labels in the legend. Default is 0.5.
-
-        annotate_lttrs (bool): Boolean indicating whether to annotate letters for statistical significance. Default is False.
-
-        note_plt (str, optional): Optional note to add to the plot for additional context. Default is None.
-
-
-        """
-
-        # create folder where Plots are stored
-        out_path = plib.Path(Project.out_path, "plots")
-        out_path.mkdir(parents=True, exist_ok=True)
-        if not aggr:  # then use compounds reports
-            if files_or_samples == "files":
-                df_ave = self.files_reports[param].T
-                df_std = pd.DataFrame()
-            elif files_or_samples == "samples":
-                df_ave = self.samples_reports[param].T
-                df_std = self.samples_reports_std[param].T
-        else:  # use aggregated reports
-            if files_or_samples == "files":
-                df_ave = self.files_aggrreps[param].T
-                df_std = pd.DataFrame()
-            elif files_or_samples == "samples":
-                df_ave = self.samples_aggrreps[param].T
-                df_std = self.samples_aggrreps_std[param].T
-
-        if only_samples_to_plot is not None:
-            df_ave = df_ave.loc[only_samples_to_plot, :].copy()
-            if files_or_samples == "samples":
-                df_std = df_std.loc[only_samples_to_plot, :].copy()
-
-        if rename_samples is not None:
-            df_ave.index = rename_samples
-            if files_or_samples == "samples":
-                df_std.index = rename_samples
-
-        if reorder_samples is not None:
-            filtered_reorder_samples = [
-                idx for idx in reorder_samples if idx in df_ave.index
-            ]
-            df_ave = df_ave.reindex(filtered_reorder_samples)
-            if files_or_samples == "samples":
-                df_std = df_std.reindex(filtered_reorder_samples)
-
-        if min_y_thresh is not None:
-            df_ave = df_ave.loc[:, (df_ave > min_y_thresh).any(axis=0)].copy()
-            if files_or_samples == "samples":
-                df_std = df_std.loc[:, df_ave.columns].copy()
-
-        if item_to_color_to_hatch is not None:  # specific color and hatches to each fg
-            colors = [
-                item_to_color_to_hatch.loc[item, "clr"] for item in df_ave.columns
-            ]
-            htchs = [
-                item_to_color_to_hatch.loc[item, "htch"] for item in df_ave.columns
-            ]
-        else:  # no specific colors and hatches specified
-            colors = sns.color_palette(color_palette, df_ave.shape[1])
-            htchs = (
-                None,
-                "//",
-                "...",
-                "--",
-                "O",
-                "\\\\",
-                "oo",
-                "\\\\\\",
-                "/////",
-                ".....",
-                "//",
-                "...",
-                "--",
-                "O",
-                "\\\\",
-                "oo",
-                "\\\\\\",
-                "/////",
-                ".....",
-                "//",
-                "...",
-                "--",
-                "O",
-                "\\\\",
-                "oo",
-                "\\\\\\",
-                "/////",
-                ".....",
-                "//",
-                "...",
-                "--",
-                "O",
-                "\\\\",
-                "oo",
-                "\\\\\\",
-                "/////",
-                ".....",
-            )
-        if yt_sum:
-            plot_type = 1
-        else:
-            plot_type = 0
-
-        fig, ax, axt, fig_par = figure_create(
-            rows=1,
-            cols=1,
-            plot_type=plot_type,
-            paper_col=paper_col,
-            hgt_mltp=fig_hgt_mlt,
-            font=Project.plot_font,
-        )
-        if df_std.isna().all().all() or df_std.empty:  # means that no std is provided
-            df_ave.plot(
-                ax=ax[0],
-                kind="bar",
-                rot=xlab_rot,
-                width=0.9,
-                edgecolor="k",
-                legend=False,
-                capsize=3,
-                color=colors,
-            )
-            bars = ax[0].patches  # needed to add patches to the bars
-            n_different_hatches = int(len(bars) / df_ave.shape[0])
-        else:  # no legend is represented but non-significant values are shaded
-            mask = (df_ave.abs() > df_std.abs()) | df_std.isna()
-
-            df_ave[mask].plot(
-                ax=ax[0],
-                kind="bar",
-                rot=xlab_rot,
-                width=0.9,
-                edgecolor="k",
-                legend=False,
-                yerr=df_std[mask],
-                capsize=3,
-                color=colors,
-                label="_nolegend",
-            )
-            df_ave[~mask].plot(
-                ax=ax[0],
-                kind="bar",
-                rot=xlab_rot,
-                width=0.9,
-                legend=False,
-                edgecolor="grey",
-                color=colors,
-                alpha=0.5,
-                label="_nolegend",
-            )
-            bars = ax[0].patches  # needed to add patches to the bars
-            n_different_hatches = int(len(bars) / df_ave.shape[0] / 2)
-        if yt_sum:
-            axt[0].scatter(
-                df_ave.index,
-                df_ave.sum(axis=1).values,
-                color="k",
-                linestyle="None",
-                edgecolor="k",
-                facecolor="grey",
-                s=100,
-                label=yt_sum_label,
-                alpha=0.5,
-            )
-            if not df_std.empty:
-                axt[0].errorbar(
-                    df_ave.index,
-                    df_ave.sum(axis=1).values,
-                    df_std.sum(axis=1).values,
-                    capsize=3,
-                    linestyle="None",
-                    color="grey",
-                    ecolor="k",
-                )
-        bar_htchs = []
-        # get a list with the htchs
-        for h in htchs[:n_different_hatches] + htchs[:n_different_hatches]:
-            for n in range(df_ave.shape[0]):  # htcs repeated for samples
-                bar_htchs.append(h)  # append based on samples number
-        for bar, hatch in zip(bars, bar_htchs):  # assign htchs to each bar
-            bar.set_hatch(hatch)
-        ax[0].set(xlabel=None)
-        if y_lab is None:
-            y_lab = Project.param_to_axis_label[param]
-        if yt_sum:
-            legend_x_anchor += 0.14
-            yt_lab = y_lab
-        if xlab_rot != 0:
-            ax[0].set_xticklabels(
-                df_ave.index, rotation=xlab_rot, ha="right", rotation_mode="anchor"
-            )
-        if legend_location is not None:
-            hnd_ax, lab_ax = ax[0].get_legend_handles_labels()
-            if not df_std.empty:
-                hnd_ax = hnd_ax[: len(hnd_ax) // 2]
-                lab_ax = lab_ax[: len(lab_ax) // 2]
-            if legend_labelspacing > 0.5:  # large legend spacing for molecules
-                ax[0].plot(np.nan, np.nan, "-", color="None", label=" ")
-                hhhh, aaaa = ax[0].get_legend_handles_labels()
-                hnd_ax.append(hhhh[0])
-                lab_ax.append(aaaa[0])
-            if yt_sum:
-                hnd_axt, lab_axt = axt[0].get_legend_handles_labels()
-            else:
-                hnd_axt, lab_axt = [], []
-            if legend_location == "outside":  # legend goes outside of plot area
-                ax[0].legend(
-                    hnd_ax + hnd_axt,
-                    lab_ax + lab_axt,
-                    loc="upper left",
-                    ncol=legend_columns,
-                    bbox_to_anchor=(legend_x_anchor, legend_y_anchor),
-                    labelspacing=legend_labelspacing,
-                )
-            else:  # legend is inside of plot area
-                ax[0].legend(
-                    hnd_ax + hnd_axt,
-                    lab_ax + lab_axt,
-                    loc=legend_location,
-                    ncol=legend_columns,
-                    labelspacing=legend_labelspacing,
-                )
-        # annotate ave+-std at the top of outliers bar (exceeding y_lim)
-        if annotate_outliers and (y_lim is not None):  # and (not df_std.empty):
-            _annotate_outliers_in_plot(ax[0], df_ave, df_std, y_lim)
-        if note_plt:
-            ax[0].annotate(
-                note_plt,
-                ha="left",
-                va="bottom",
-                xycoords="axes fraction",
-                xy=(0.005, 0.945 + fig_hgt_mlt / 100),
-            )
-        figure_save(
-            filename,
-            out_path,
-            fig,
-            ax,
-            axt,
-            fig_par,
-            y_lab=y_lab,
-            yt_lab=yt_lab,
-            y_lim=y_lim,
-            yt_lim=yt_lim,
-            legend=False,
-            y_ticks=y_ticks,
-            yt_ticks=yt_ticks,
-            tight_layout=True,
-            annotate_lttrs=annotate_lttrs,
-            grid=Project.plot_grid,
-        )
-
-
-# %%

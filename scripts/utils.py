@@ -13,6 +13,9 @@ gcms = Project()
 
 
 # %%
+from collections.abc import Iterable
+
+
 def print_checked_df_to_script_text_with_arrays(df):
     # Convert the DataFrame to a dictionary with 'list' orientation
     df_dict = df.to_dict(orient="list")

@@ -1,4 +1,4 @@
-# Import necessary libraries
+# %% Import necessary libraries
 import pathlib as plib  # Used for handling file and directory paths
 from gcms_data_analysis import Project
 from gcms_data_analysis.plotting import plot_ave_std
@@ -6,7 +6,7 @@ from gcms_data_analysis.plotting import plot_ave_std
 # Define the folder path where your data is located. Change this path to where you've stored your data files.
 # folder_path = plib.Path(plib.Path(__file__).parent, "example\data")
 folder_path = plib.Path(
-    r"C:\Users\mp933\OneDrive - Cornell University\Python\gcms_data_analysis\example\data"
+    r"C:\Users\mp933\OneDrive - Cornell University\Python\gcms_data_analysis\tests\data_minimal_case"
 )
 # folder_path: plib.Path = plib.Path(
 #     r"C:\Users\mp933\OneDrive - Cornell University\Python\GCMS\NNDNDD"
@@ -23,17 +23,67 @@ Project.set_auto_save_to_excel(False)
 gcms = Project()
 
 # Load metadata from a user-provided 'files_info.xlsx' file, or generate it from .txt GC-MS files if not provided
-files_info0 = gcms.load_files_info()
-
+files_info = gcms.load_files_info()
 # Load individual GCMS .txt files as pandas DataFrames
 files = gcms.load_all_files()
+files = gcms.add_iupac_to_files()
+list_of_all_compounds = gcms.create_list_of_all_compounds()
+files, is_files_deriv = gcms.apply_calibration_to_files()
+samples_info, samples_info_std = gcms.create_samples_info()
+samples, samples_std = gcms.create_samples_from_files()
+
+params = [
+    "height",
+    "area",
+    "area_if_undiluted",
+    "conc_vial_mg_L",
+    "conc_vial_if_undiluted_mg_L",
+    "fraction_of_sample_fr",
+    "fraction_of_feedstock_fr",
+]
+for param in params:
+    _ = gcms.create_files_param_report(param)
+    _ = gcms.create_files_param_aggrrep(param)
+
+    _, _ = gcms.create_samples_param_report(param)
+    _, _ = gcms.create_samples_param_aggrrep(param)
+
+# %%
+for param in params:
+    print(f"'{param}': ")
+    print_checked_df_to_script_text_with_arrays(gcms.files_reports[param])
+# %%
+
+for param in params:
+    print(f"'{param}': ")
+    print_checked_df_to_script_text_with_arrays(gcms.files_aggrreps[param])
+# %%
+for param in params:
+    print(f"'{param}': ")
+    print_checked_df_to_script_text_with_arrays(gcms.samples_reports[param])
+# %%
+for param in params:
+    print(f"'{param}': ")
+    print_checked_df_to_script_text_with_arrays(gcms.samples_reports_std[param])
+# %%
+
+for param in params:
+    print(f"'{param}': ")
+    print_checked_df_to_script_text_with_arrays(gcms.samples_aggrreps[param])
+# %%
+
+for param in params:
+    print(f"'{param}': ")
+    print_checked_df_to_script_text_with_arrays(gcms.samples_aggrreps_std[param])
+# %%
+
 
 # Load classification codes and mass fractions for functional groups from a provided file
 class_code_frac = gcms.load_class_code_frac()
 
 # Load calibration data for standard and derivatized samples, and determine if they are derivatized
 calibrations, is_calibr_deriv = gcms.load_calibrations()
-c1, c2 = calibrations["calibration"], calibrations["deriv_calibration"]
+# c1, c2 = calibrations["calibration"], calibrations["deriv_calibration"]
 
 # Generate a comprehensive list of all compounds found across samples
 list_of_all_compounds = gcms.create_list_of_all_compounds()
