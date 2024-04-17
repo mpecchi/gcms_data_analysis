@@ -919,7 +919,7 @@ def plot_ave_std(
             hnd_ax.append(hhhh[0])
             lab_ax.append(aaaa[0])
         if show_total_in_twinx:
-            hnd_axt, lab_axt = myfig.axt[0].get_legend_handles_labels()
+            hnd_axt, lab_axt = myfig.axts[0].get_legend_handles_labels()
         else:
             hnd_axt, lab_axt = [], []
         if legend_location == "outside":  # legend goes outside of plot area
