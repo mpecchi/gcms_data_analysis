@@ -325,7 +325,7 @@ class Project:
     the project (intended as a collection of GCMS files, calibrations, etc)
     """
 
-    folder_path = plib.Path.cwd()
+    folder_path = plib.Path(__file__).parent
     in_path = folder_path
     out_path = plib.Path(in_path, "output")
     shared_path = in_path.parents[0]
