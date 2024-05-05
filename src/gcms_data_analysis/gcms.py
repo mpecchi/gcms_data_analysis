@@ -103,6 +103,7 @@ class Project:
 
         self.list_of_all_compounds: list[str] | None = None
         self.compounds_properties: pd.DataFrame | None = None
+        self.dict_names_to_iupacs: dict[str, str] | None = None
 
         self.deriv_list_of_all_compounds: list[str] | None = None
         self.deriv_files_present: bool = False
@@ -306,11 +307,9 @@ class Project:
             self.load_all_files()
         if not self.calibrations:
             self.load_calibrations()
-        all_dfs_with_comps = []
-        for file in self.files.values():
-            all_dfs_with_comps.append(file)
-        for calib in self.calibrations.values():
-            all_dfs_with_comps.append(calib)
+        all_dfs_with_comps = [f for f in self.files.values()] + [
+            f for f in self.calibrations.values()
+        ]
         # non-derivatized compounds
         all_compounds: pd.DataFrame = pd.concat(all_dfs_with_comps)
 
@@ -336,7 +335,7 @@ class Project:
 
         if self.dict_classes_to_codes is None:
             self.load_class_code_frac()
-        if not self.list_of_all_compounds is None:
+        if self.list_of_all_compounds is None:
             self.create_list_of_all_compounds()
         # cpdf = pd.DataFrame(index=pd.Index(self.list_of_all_compounds))
         #
@@ -372,6 +371,55 @@ class Project:
             print("Warning: compounds_properties.xlsx not found")
             cpdf = self.create_compounds_properties()
         return self.compounds_properties
+
+    def create_dict_names_to_iupacs(self) -> dict[str, str]:
+        if self.compounds_properties is None:
+            self.load_compounds_properties()
+        self.dict_names_to_iupacs = self.compounds_properties["iupac_name"].to_dict()
+        return self.dict_names_to_iupacs
+
+    def add_iupac_to_files_and_calibrations(self):
+        """Adds the IUPAC name to each compound in the loaded files,
+        distinguishing between underivatized and derivatized compounds,
+        and updates the corresponding file dataframes."""
+        if not self.files:
+            self.load_all_files()
+        if self.compounds_properties is None:
+            self.load_compounds_properties()
+        for file in self.files.values():
+            file["iupac_name"] = file.index.map(self.dict_names_to_iupacs)
+        for file in self.calibrations.values():
+            file["iupac_name"] = file.index.map(self.dict_names_to_iupacs)
+        return self.files, self.calibrations
+
+    # def apply_calibration_to_files(self):
+    #     """Applies the appropriate calibration curve to each compound
+    #     in the loaded files, adjusting concentrations based on calibration
+    #     data, and updates the 'files' attribute with calibrated data."""
+    #     print("Info: apply_calibration_to_files: loop started")
+    #     if not self.files:
+    #         self.load_all_files()
+    #     if not self.calibrations:
+    #         self.load_calibrations()
+    #     if not self.iupac_to_files_added:
+    #         _, _ = self.add_iupac_to_files()
+
+    #     for filename, _ in self.files.items():
+    #         calibration_name = self.files_info.loc[filename, "calibration_file"]
+    #         calibration = self.calibrations[calibration_name]
+    #         if not self.is_files_deriv[filename]:
+    #             df_comps = self.compounds_properties
+    #         else:
+    #             df_comps = self.deriv_compounds_properties
+    #         file = self._apply_calib_to_file(filename, calibration, df_comps)
+    #         if Project.auto_save_to_excel:
+    #             self.save_file(file, filename)
+    #     self.calibration_to_files_applied = True
+    #     return self.files, self.is_files_deriv
+
+
+def create_tanimoto_matrix(smiles_list: list[str]):
+    pass
 
 
 def get_compound_from_pubchempy(comp_name: str) -> pcp.Compound:
