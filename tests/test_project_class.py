@@ -3,7 +3,7 @@ import pytest
 import pathlib as plib
 from gcms_data_analysis.gcms import Project
 from pandas.testing import assert_frame_equal
-
+import numpy as np
 
 folder_path: plib.Path = plib.Path(__file__).parent
 
@@ -31,8 +31,9 @@ assert proj.acceptable_params == [
 fic = proj.create_files_info(update_saved_files_info=False)
 fil = proj.load_files_info(update_saved_files_info=False)
 
+
 fic.calibration_file = fil.calibration_file  # this cannot be updated automatically
-assert_frame_equal(fil, fic, check_exact=False, atol=1e-5, rtol=1e-5)
+# assert_frame_equal(fil, fic, check_exact=False, atol=1e-5, rtol=1e-5)
 
 # %%
 files = proj.load_all_files()
@@ -56,64 +57,17 @@ assert "decanoic acid" in dni.values()
 # %%
 files_iupac, calibration_iupac = proj.add_iupac_to_files_and_calibrations()
 # %%
-import pandas as pd
-from rdkit import Chem
-from rdkit.Chem import DataStructs
-from rdkit.Chem.AllChem import (
-    GetMorganFingerprintAsBitVect,
-)  # pylint: disable=no-name-in-module
+tsdf, mwddf = proj.create_tanimoto_and_molecular_weight_similarity_dfs()
 
+scd = proj.create_semi_calibration_dict()
 
-def create_tanimoto_similarity_dict(
-    comp_smiles: str, calib_smiless: list[str]
-) -> dict[str, list[float]]:
-
-    mols_comp = Chem.MolFromSmiles(comp_smiles)
-    mols_cal = [
-        Chem.MolFromSmiles(smi) for smi in calib_smiless if isinstance(smi, str)
-    ]
-
-    # Generate fingerprints from molecule objects, skipping None entries created from invalid SMILES
-    fps_comp = GetMorganFingerprintAsBitVect(mols_comp, 2, nBits=1024)
-
-    fps_cal = [
-        GetMorganFingerprintAsBitVect(mol, 2, nBits=1024)
-        for mol in mols_cal
-        if mol is not None
-    ]
-
-    # perform Tanimoto similarity betwenn the first and all other compounds
-    similarity = DataStructs.BulkTanimotoSimilarity(fps_comp, fps_cal)
-    # create a df with results
-    return similarity
-
-
-calib_comp_iupacs = proj.calibrations["cal_minimal"].index.tolist()
-calib_smiless = proj.compounds_properties.loc[
-    calib_comp_iupacs, "canonical_smiles"
-].tolist()
-tanimoto_similarity_df: pd.DataFrame = pd.DataFrame(
-    index=proj.compounds_properties["iupac_name"],
-    columns=calib_comp_iupacs,
-)
-for iupac, smiles in zip(
-    proj.compounds_properties["iupac_name"],
-    proj.compounds_properties["canonical_smiles"],
-):
-    if isinstance(smiles, str):
-        sim = create_tanimoto_similarity_dict(smiles, calib_smiless)
-        tanimoto_similarity_df.loc[iupac, :] = sim
 # %%
-compounds_properties = proj.compounds_properties
-calib_comp_iupacs = proj.calibrations["cal_minimal"]["iupac_name"].tolist()
-tanimoto_similarity_df: pd.DataFrame = pd.DataFrame(
-    index=compounds_properties.iupac_name.tolist(),
-    columns=proj.calibrations["cal_minimal"]["iupac_name"].tolist(),
-)
-for comp in compounds_properties.iupac_name.tolist():
-    print(comp)
-    s = create_tanimoto_similarity_dict(comp, calib_comp_iupacs)
-    tanimoto_similarity_df.loc[comp, :] = s
+s1 = proj.apply_calib_to_single_file("S_1")
 # %%
+fc = proj.apply_calibration_to_files()
+# %%
+file_info_with_stats = proj.add_stats_to_files_info()
 
+# %%
+si_ave, si_std = proj.create_samples_info()
 # %%

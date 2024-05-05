@@ -11,3 +11,5 @@ Peak#	Ret.Time	Proc.From	Proc.To	Mass	Area	Height	A/H	Conc.	Mark	Name	Ret. Index
 2	20.942	20.767	21.020	TIC	200	200	1	0	 V 	Naphthalene		8.11	9.20	98	91-20-3
 3	21.426	21.373	21.500	TIC	2000	2000	1	0	 V 	Dodecane		0.36	0.57	96	112-40-3
 4	22.426	22.373	22.500	TIC	1000	1000	1	0	 V 	NotValidComp		0.36	0.57	96	112-40-3
+5	23.426	22.373	22.500	TIC	1000	100	1	0	 V 	Palmitic Acid		0.36	0.57	96	112-40-3
+6	24.426	22.373	22.500	TIC	1000	200	1	0	 V 	Dichlorobenzene		0.36	0.57	96	112-40-3

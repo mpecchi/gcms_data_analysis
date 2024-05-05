@@ -5,6 +5,12 @@ import numpy as np
 import pandas as pd
 import pubchempy as pcp
 import ele
+import pandas as pd
+from rdkit import Chem
+from rdkit.Chem import DataStructs
+from rdkit.Chem.AllChem import (  # pylint: disable=no-name-in-module
+    GetMorganFingerprintAsBitVect,
+)
 from gcms_data_analysis.fragmenter import Fragmenter
 
 
@@ -19,7 +25,7 @@ class Project:
         self,
         folder_path: plib.Path | str,
         name: str | None = None,
-        apply_semi_calibration: bool = True,
+        use_semi_calibration: bool = True,
         tanimoto_similarity_threshold: float = 0.4,
         delta_mol_weight_threshold: int = 100,
         file_load_skiprows: int = 8,
@@ -42,7 +48,7 @@ class Project:
             self.name = self.folder_path.parts[-1]
         else:
             self.name = name
-        self.apply_semi_calibration = apply_semi_calibration
+        self.use_semi_calibration = use_semi_calibration
         self.tanimoto_similarity_threshold = tanimoto_similarity_threshold
         self.delta_mol_weight_threshold = delta_mol_weight_threshold
         self.file_load_skiprows = file_load_skiprows
@@ -122,6 +128,9 @@ class Project:
         self.list_of_samples_param_aggrreps = []
         self.files: dict[str, pd.DataFrame] = {}
         self.calibrations: dict[str : pd.DataFrame] = {}
+        self.tanimoto_similarity_df: dict[str : pd.DataFrame] = {}
+        self.molecular_weight_diff_df: dict[str : pd.DataFrame] = {}
+        self.semi_calibration_dict: dict[str, dict[str, str]] = {}
         self.files_reports = {}
         self.files_aggrreps = {}
         self.samples_reports = {}
@@ -183,20 +192,6 @@ class Project:
             if col not in list(files_info_no_defaults):
                 files_info_no_defaults[col] = 1
         return files_info_no_defaults
-
-    def create_samples_info(self):
-        """Creates a summary 'samples_info' DataFrame from 'files_info',
-        aggregating data for each sample, and updates the 'samples_info'
-        attribute with this summarized data."""
-        if self.files_info is None:
-            _ = self.load_files_info()
-        self.samples_info = (
-            self.files_info.reset_index().groupby("samplename").agg(list)
-        )
-        # self.samples_info.reset_index(inplace=True)
-        self.samples_info.set_index("samplename", drop=True, inplace=True)
-        print("Info: create_samples_info: samples_info created")
-        return self.samples_info
 
     def load_all_files(self):
         """Loads all files listed in 'files_info' into a dictionary, where keys are
@@ -384,42 +379,286 @@ class Project:
         and updates the corresponding file dataframes."""
         if not self.files:
             self.load_all_files()
+        if not self.calibrations:
+            self.load_calibrations()
         if self.compounds_properties is None:
             self.load_compounds_properties()
+        if self.dict_names_to_iupacs is None:
+            self.create_dict_names_to_iupacs()
         for file in self.files.values():
             file["iupac_name"] = file.index.map(self.dict_names_to_iupacs)
-        for file in self.calibrations.values():
-            file["iupac_name"] = file.index.map(self.dict_names_to_iupacs)
+        for cal in self.calibrations.values():
+            cal["iupac_name"] = cal.index.map(self.dict_names_to_iupacs)
         return self.files, self.calibrations
 
-    # def apply_calibration_to_files(self):
-    #     """Applies the appropriate calibration curve to each compound
-    #     in the loaded files, adjusting concentrations based on calibration
-    #     data, and updates the 'files' attribute with calibrated data."""
-    #     print("Info: apply_calibration_to_files: loop started")
-    #     if not self.files:
-    #         self.load_all_files()
-    #     if not self.calibrations:
-    #         self.load_calibrations()
-    #     if not self.iupac_to_files_added:
-    #         _, _ = self.add_iupac_to_files()
+    def create_tanimoto_and_molecular_weight_similarity_dfs(
+        self,
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        if "iupac_name" not in list(self.files.values())[0].columns:
+            self.add_iupac_to_files_and_calibrations()
+        prop_index_iupac = self.compounds_properties.set_index("iupac_name")
+        prop_index_iupac = prop_index_iupac[
+            ~prop_index_iupac.index.duplicated(keep="first")
+        ].dropna(how="all", axis=0)
+        for calibrationname, calibration in self.calibrations.items():
+            calib_iupacs = calibration["iupac_name"].tolist()
+            calib_smiless = prop_index_iupac.loc[
+                calib_iupacs, "canonical_smiles"
+            ].tolist()
+            calib_mws = prop_index_iupac.loc[
+                calib_iupacs, "molecular_weight"
+            ].to_numpy()
+            non_calib_iupacs = [
+                p for p in prop_index_iupac.index if p not in calib_iupacs
+            ]
+            non_calib_smiless = prop_index_iupac.loc[
+                non_calib_iupacs, "canonical_smiles"
+            ].tolist()
+            non_calib_mws = prop_index_iupac.loc[
+                non_calib_iupacs, "molecular_weight"
+            ].to_numpy()
 
-    #     for filename, _ in self.files.items():
-    #         calibration_name = self.files_info.loc[filename, "calibration_file"]
-    #         calibration = self.calibrations[calibration_name]
-    #         if not self.is_files_deriv[filename]:
-    #             df_comps = self.compounds_properties
-    #         else:
-    #             df_comps = self.deriv_compounds_properties
-    #         file = self._apply_calib_to_file(filename, calibration, df_comps)
-    #         if Project.auto_save_to_excel:
-    #             self.save_file(file, filename)
-    #     self.calibration_to_files_applied = True
-    #     return self.files, self.is_files_deriv
+            tan_sim_df = pd.DataFrame(index=non_calib_iupacs, columns=calib_iupacs)
+            mw_diff_df = pd.DataFrame(index=non_calib_iupacs, columns=calib_iupacs)
+            for iupac, smiles, weight in zip(
+                non_calib_iupacs, non_calib_smiless, non_calib_mws
+            ):
+                if isinstance(smiles, str):
+                    tan_sim_df.loc[iupac, :] = create_tanimoto_similarity_dict(
+                        smiles, calib_smiless
+                    )
+                    mw_diff_df.loc[iupac, :] = np.abs(calib_mws - weight)
+            self.tanimoto_similarity_df[calibrationname] = tan_sim_df
+            self.molecular_weight_diff_df[calibrationname] = mw_diff_df
+            return (
+                self.tanimoto_similarity_df[calibrationname],
+                self.molecular_weight_diff_df[calibrationname],
+            )
+
+    def create_semi_calibration_dict(self) -> dict[str, dict[str, str]]:
+        if not self.tanimoto_similarity_df or not self.molecular_weight_diff_df:
+            self.create_tanimoto_and_molecular_weight_similarity_dfs()
+        for calibrationname in self.calibrations.keys():
+            if self.tanimoto_similarity_threshold is not None:
+                all_valid_ts = self.tanimoto_similarity_df[calibrationname].where(
+                    self.tanimoto_similarity_df[calibrationname]
+                    >= self.tanimoto_similarity_threshold
+                )
+            else:
+                all_valid_ts = self.tanimoto_similarity_df[calibrationname]
+            all_valid_ts.dropna(axis=0, how="all", inplace=True)
+            # Identify the column with the highest value in each row that meets the threshold
+            best_valid_ts = all_valid_ts.idxmax(axis=1)
+
+            if self.delta_mol_weight_threshold is not None:
+                all_valid_mw = self.molecular_weight_diff_df[calibrationname].where(
+                    self.molecular_weight_diff_df[calibrationname]
+                    <= self.delta_mol_weight_threshold
+                )
+            else:
+                all_valid_mw = self.molecular_weight_diff_df[calibrationname]
+            all_valid_mw.dropna(axis=0, how="all", inplace=True)
+            # Identify the column with the highest value in each row that meets the threshold
+            best_valid_mw = all_valid_mw.idxmin(axis=1)
+            self.semi_calibration_dict[calibrationname] = {
+                k: best_valid_ts[k]
+                for k in best_valid_ts.keys()
+                if k in best_valid_mw and best_valid_ts[k] == best_valid_mw[k]
+            }
+            return self.semi_calibration_dict[calibrationname]
+
+    def apply_calibration_to_files(self):
+        """Applies the appropriate calibration curve to each compound
+        in the loaded files, adjusting concentrations based on calibration
+        data, and updates the 'files' attribute with calibrated data."""
+        print("Info: apply_calibration_to_files: loop started")
+        if "iupac_name" not in list(self.files.values())[0].columns:
+            self.add_iupac_to_files_and_calibrations()
+        if self.use_semi_calibration and not self.semi_calibration_dict:
+            self.create_semi_calibration_dict()
+
+        for filename in self.files.keys():
+            self.files[filename] = self.apply_calib_to_single_file(filename)
+        return self.files
+
+    def apply_calib_to_single_file(self, filename) -> pd.DataFrame:
+        """computes conc data based on the calibration provided.
+        If semi_calibration is specified, the closest compound in terms of
+        Tanimoto similarity and molecular weight similarity is used for
+        compounds where a calibration entry is not available"""
+        # """calibration.rename(Project.compounds_to_rename, inplace=True)"""
+        # print(file)
+        print("\tInfo: _apply_calib_to_file ", filename)
+        calibrationname = self.files_info.loc[filename, "calibration_file"]
+        clbrtn = self.calibrations[calibrationname].set_index("iupac_name")
+        if self.use_semi_calibration:
+            semi_cal_dic = self.semi_calibration_dict[calibrationname]
+        cols_cal_area = [c for c in list(clbrtn) if "Area" in c]
+        cols_cal_ppms = [c for c in list(clbrtn) if "PPM" in c]
+        tot_sample_conc = self.files_info.loc[
+            filename, "total_sample_conc_in_vial_mg_L"
+        ]
+        sample_yield_feed_basis = self.files_info.loc[
+            filename, "sample_yield_on_feedstock_basis_fr"
+        ]
+
+        for compname, compiupac in zip(
+            self.files[filename].index.tolist(),
+            self.files[filename]["iupac_name"].tolist(),
+        ):
+            if compiupac == "unidentified":
+                iupac_for_calib = "n.a."
+            else:
+                if compiupac in clbrtn.index.tolist():
+                    iupac_for_calib = compiupac
+                else:
+                    if self.use_semi_calibration:
+                        if compiupac in list(semi_cal_dic.keys()):
+                            iupac_for_calib = semi_cal_dic[compiupac]
+                        else:
+                            iupac_for_calib = "n.a."
+            if iupac_for_calib != "n.a.":
+                # areas and ppms for the calibration are taken from df_clbr
+                cal_areas = clbrtn.loc[iupac_for_calib, cols_cal_area].to_numpy(
+                    dtype=float
+                )
+                cal_ppms = clbrtn.loc[iupac_for_calib, cols_cal_ppms].to_numpy(
+                    dtype=float
+                )
+                # linear fit of calibration curve (exclude nan), get ppm from area
+                fit = np.polyfit(
+                    cal_areas[~np.isnan(cal_areas)], cal_ppms[~np.isnan(cal_ppms)], 1
+                )
+                # concentration at the injection solution (GC vial) ppp = mg/L
+                conc_mg_l = np.poly1d(fit)(self.files[filename].loc[compname, "area"])
+                if conc_mg_l < 0:
+                    conc_mg_l = 0
+            else:
+                conc_mg_l = np.nan
+            self.files[filename].loc[compname, "conc_vial_mg_L"] = conc_mg_l
+            self.files[filename].loc[compname, "conc_vial_if_undiluted_mg_L"] = (
+                conc_mg_l * self.files_info.loc[filename, "dilution_factor"]
+            )
+            self.files[filename].loc[compname, "fraction_of_sample_fr"] = (
+                conc_mg_l / tot_sample_conc
+            )
+            self.files[filename].loc[compname, "fraction_of_feedstock_fr"] = (
+                conc_mg_l / tot_sample_conc * sample_yield_feed_basis
+            )
+            self.files[filename].loc[compname, "calibration-used"] = iupac_for_calib
+        if np.isnan(self.files[filename]["conc_vial_mg_L"]).all():
+            print(
+                f"WARNING: the file {filename} does not contain any ",
+                "compound for which a calibration nor a semicalibration is available.",
+                "\n either lower similarity thresholds, add calibration compounds, or",
+                "calibration_file=False in files_info.xlsx",
+            )
+        return self.files[filename]
+
+    def add_stats_to_files_info(self) -> pd.DataFrame:
+        """Computes and adds statistical data for each file to the 'files_info'
+        DataFrame, such as maximum height, area, and concentrations,
+        updating the 'files_info' with these statistics."""
+        print("Info: add_stats_to_files_info: started")
+
+        numeric_columns = [
+            col
+            for col in self.acceptable_params
+            if col in list(self.files.values())[0].columns
+        ]
+        max_columns = [f"max_{nc}" for nc in numeric_columns]
+        total_columns = [f"total_{nc}" for nc in numeric_columns]
+        comp_with_max_columns = [f"compound_with_max_{nc}" for nc in numeric_columns]
+        for name, df in self.files.items():
+            for ncol, mcol, tcol, cmcol in zip(
+                numeric_columns, max_columns, total_columns, comp_with_max_columns
+            ):
+                self.files_info.loc[name, mcol] = df[ncol].max()
+                self.files_info.loc[name, tcol] = df[ncol].sum()
+                self.files_info.loc[name, cmcol] = df[df[ncol] == df[ncol].max()].index[
+                    0
+                ]
+        # convert max and total columns to float
+        for col in max_columns + total_columns:
+            if col in self.files_info.columns:
+                self.files_info[col] = self.files_info[col].astype(float)
+        return self.files_info
+
+    def create_samples_info(self):
+        """Creates a summary 'samples_info' DataFrame from 'files_info',
+        aggregating data for each sample, and updates the 'samples_info'
+        attribute with this summarized data."""
+        if self.files_info is None:
+            self.load_files_info()
+        numeric_columns = [
+            col
+            for col in self.acceptable_params
+            if col in list(self.files.values())[0].columns
+        ]
+        files_info = self.files_info.reset_index()
+        max_columns = [f"max_{nc}" for nc in numeric_columns]
+        total_columns = [f"total_{nc}" for nc in numeric_columns]
+        all_numeric_columns = numeric_columns + max_columns + total_columns
+        # Ensure these columns are in files_info before proceeding
+        numcol = [col for col in all_numeric_columns if col in files_info.columns]
+
+        # Identify non-numeric columns
+        non_numcol = [
+            col
+            for col in files_info.columns
+            if col not in numcol and col != "samplename"
+        ]
+
+        # Initialize samples_info DataFrame
+        # self.samples_info = pd.DataFrame(columns=self.files_info.columns)
+
+        # Create an aggregation dictionary
+
+        agg_dict = {
+            **{nc: "mean" for nc in numcol},
+            **{nnc: lambda x: list(x) for nnc in non_numcol},
+        }
+        agg_dict_std = {
+            **{nc: "std" for nc in numcol},
+            **{nnc: lambda x: list(x) for nnc in non_numcol},
+        }
+
+        # Group by 'samplename' and apply aggregation, make sure 'samplename' is not part of the aggregation
+        _samples_info_std = files_info.groupby("samplename").agg(agg_dict_std)
+        _samples_info = files_info.groupby("samplename").agg(agg_dict)
+
+        self.samples_info = _samples_info[non_numcol + numcol]
+        self.samples_info_std = _samples_info_std[non_numcol + numcol]
+        print("Info: create_samples_info: samples_info created")
+        return self.samples_info, self.samples_info_std
 
 
-def create_tanimoto_matrix(smiles_list: list[str]):
-    pass
+def create_tanimoto_similarity_dict(
+    comp_smiles: str, calib_smiless: list[str]
+) -> dict[str, list[float]]:
+
+    mols_comp = Chem.MolFromSmiles(comp_smiles)  # pylint: disable=no-member
+    mols_cal = [
+        Chem.MolFromSmiles(smi)  # pylint: disable=no-member
+        for smi in calib_smiless
+        if isinstance(smi, str)
+    ]
+
+    # Generate fingerprints from molecule objects, skipping None entries created from invalid SMILES
+    fps_comp = GetMorganFingerprintAsBitVect(mols_comp, 2, nBits=1024)
+
+    fps_cal = [
+        GetMorganFingerprintAsBitVect(mol, 2, nBits=1024)
+        for mol in mols_cal
+        if mol is not None
+    ]
+
+    # perform Tanimoto similarity betwenn the first and all other compounds
+    similarity = DataStructs.BulkTanimotoSimilarity(  # pylint: disable=no-member
+        fps_comp, fps_cal
+    )
+    # create a df with results
+    return similarity
 
 
 def get_compound_from_pubchempy(comp_name: str) -> pcp.Compound:
