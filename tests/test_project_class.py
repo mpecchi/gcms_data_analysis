@@ -11,8 +11,8 @@ folder_path = r"/Users/matteo/Projects/gcms_data_analysis/tests/data_minimal_cas
 # %%
 proj = Project(
     folder_path=folder_path,
-    auto_save_reports=False,
-    compounds_to_rename_in_files={"phenol": "renamed_phenol"},
+    auto_save_to_excel=False,
+    # compounds_to_rename_in_files={"phenol": "catechol"},
 )
 
 # check a couple of defaults
@@ -48,3 +48,10 @@ cal = proj.load_calibrations()
 print(cal)
 # %%
 lac = proj.create_list_of_all_compounds()
+
+# %%
+cpc = proj.create_compounds_properties(update_saved_files_info=False)
+cpl = proj.load_compounds_properties()
+
+assert_frame_equal(cpc, cpl, check_exact=False, atol=1e-5, rtol=1e-5, check_dtype=False)
+# %%

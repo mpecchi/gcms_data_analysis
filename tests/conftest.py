@@ -2,59 +2,18 @@ import pathlib as plib
 import pandas as pd
 import numpy as np
 import pytest
-from gcms_data_analysis.main import Project
-
-test_dir: plib.Path = plib.Path(__file__).parent
-
-
-# testing name_to_properties
-name_to_properties_dir = test_dir / "data_name_to_properties"
-
-
-@pytest.fixture
-def dicts_classifications_codes_fractions():
-    ccf = pd.read_excel(
-        plib.Path(
-            name_to_properties_dir,
-            "classifications_codes_fractions.xlsx",
-        )
-    )
-    dict_class_to_code: dict[str, str] = dict(
-        zip(
-            ccf.classes.tolist(),
-            ccf.codes.tolist(),
-        )
-    )
-    dict_class_to_mass_fraction: dict[str, float] = dict(
-        zip(
-            ccf.classes.tolist(),
-            ccf.mfs.tolist(),
-        )
-    )
-    return dict_class_to_code, dict_class_to_mass_fraction
-
-
-@pytest.fixture
-def checked_n2p_compounds_properties():
-    properties = pd.read_excel(
-        plib.Path(
-            name_to_properties_dir,
-            "checked_compounds_properties.xlsx",
-        ),
-        index_col="comp_name",
-    )
-    return properties
+from gcms_data_analysis.gcms import Project
 
 
 # test minimal_case
+test_dir: plib.Path = plib.Path(__file__).parent
 minimal_case_dir = test_dir / "data_minimal_case"
 
 
 @pytest.fixture
 def gcms() -> Project:
-    Project.set_folder_path(minimal_case_dir)
-    Project.set_auto_save_to_excel(False)
-    return Project()
+    proj = Project(folder_path=minimal_case_dir, auto_save_to_excel=False)
+    return proj
 
 
 @pytest.fixture
@@ -63,7 +22,7 @@ def checked_files_info():
         index=pd.Index(["S_1", "S_2", "T_1", "T_2", "T_3"], name="filename"),
         data={
             "samplename": ["S", "S", "T", "T", "T"],
-            "replicate_number": [1, 2, 1, 2, 3],
+            "replicatenumber": [1, 2, 1, 2, 3],
             "derivatized": [False, False, False, False, False],
             "calibration_file": [
                 "cal_minimal",
@@ -86,7 +45,7 @@ def checked_created_files_info():
         index=pd.Index(["S_1", "S_2", "T_1", "T_2", "T_3"], name="filename"),
         data={
             "samplename": ["S", "S", "T", "T", "T"],
-            "replicate_number": ["1", "2", "1", "2", "3"],
+            "replicatenumber": ["1", "2", "1", "2", "3"],
             "derivatized": [False, False, False, False, False],
             "calibration_file": [False, False, False, False, False],
             "dilution_factor": [1, 1, 1, 1, 1],
@@ -241,7 +200,7 @@ def checked_samples_info():
         index=pd.Index(['S', 'T'], name='samplename'),
         data={
             'filename': [('S_1', 'S_2'), ('T_1', 'T_2', 'T_3')],
-            'replicate_number': [(1, 2), (1, 2, 3)],
+            'replicatenumber': [(1, 2), (1, 2, 3)],
             'derivatized': [(False, False), (False, False, False)],
             'calibration_file': [('cal_minimal', 'cal_minimal'), ('cal_minimal', 'cal_minimal', 'cal_minimal')],
             'dilution_factor': [(1, 1), (1, 1, 1)],
@@ -273,7 +232,7 @@ def checked_samples_info_std():
         index=pd.Index(['S', 'T'], name='samplename'),
         data={
             'filename': [('S_1', 'S_2'), ('T_1', 'T_2', 'T_3')],
-            'replicate_number': [(1, 2), (1, 2, 3)],
+            'replicatenumber': [(1, 2), (1, 2, 3)],
             'derivatized': [(False, False), (False, False, False)],
             'calibration_file': [('cal_minimal', 'cal_minimal'), ('cal_minimal', 'cal_minimal', 'cal_minimal')],
             'dilution_factor': [(1, 1), (1, 1, 1)],

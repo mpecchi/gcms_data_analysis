@@ -1,20 +1,53 @@
+import pathlib as plib
 import pytest
-from gcms_data_analysis import name_to_properties
+from gcms_data_analysis.gcms import name_to_properties
 from pandas.testing import assert_frame_equal
 import pandas as pd
 import numpy as np
 
+test_dir: plib.Path = plib.Path(__file__).parent
+
+
+# testing name_to_properties
+name_to_properties_dir = test_dir / "data_name_to_properties"
+
+ccf = pd.read_excel(
+    plib.Path(
+        name_to_properties_dir,
+        "classifications_codes_fractions.xlsx",
+    )
+)
+checked_dict_class_to_code: dict[str, str] = dict(
+    zip(
+        ccf.classes.tolist(),
+        ccf.codes.tolist(),
+    )
+)
+checked_dict_class_to_mass_fraction: dict[str, float] = dict(
+    zip(
+        ccf.classes.tolist(),
+        ccf.mfs.tolist(),
+    )
+)
+checked_properties = pd.read_excel(
+    plib.Path(
+        name_to_properties_dir,
+        "checked_compounds_properties.xlsx",
+    ),
+    index_col="comp_name",
+)
+
 
 @pytest.mark.parametrize("compound_name", [" ", None, False, np.nan])
 def test_name_to_properties_wrong_input_df_empty(
-    compound_name, dicts_classifications_codes_fractions
+    compound_name,  # dict_class_to_code, dict_class_to_mass_fraction
 ):
-    dict_class_to_code, dict_class_to_mass_fraction = (
-        dicts_classifications_codes_fractions
-    )
     df = pd.DataFrame()
     to_check = name_to_properties(
-        compound_name, dict_class_to_code, dict_class_to_mass_fraction, df
+        compound_name,
+        checked_dict_class_to_code,
+        checked_dict_class_to_mass_fraction,
+        df,
     )
     assert to_check.empty
 
@@ -22,36 +55,29 @@ def test_name_to_properties_wrong_input_df_empty(
 @pytest.mark.parametrize("compound_name", [" ", None, False, np.nan])
 def test_name_to_properties_wrong_input_df_not_empty(
     compound_name,
-    dicts_classifications_codes_fractions,
-    checked_n2p_compounds_properties,
 ):
-    dict_class_to_code, dict_class_to_mass_fraction = (
-        dicts_classifications_codes_fractions
-    )
     to_check = name_to_properties(
         compound_name,
-        dict_class_to_code,
-        dict_class_to_mass_fraction,
-        checked_n2p_compounds_properties,
+        checked_dict_class_to_code,
+        checked_dict_class_to_mass_fraction,
+        checked_properties,
     )
     assert_frame_equal(
         to_check,
-        checked_n2p_compounds_properties,
+        checked_properties,
         check_exact=False,
         atol=1e-3,
         rtol=1e-3,
     )
 
 
-def test_name_to_properties_name_not_on_pubchem_df_empty(
-    dicts_classifications_codes_fractions,
-):
-    dict_class_to_code, dict_class_to_mass_fraction = (
-        dicts_classifications_codes_fractions
-    )
+def test_name_to_properties_name_not_on_pubchem_df_empty():
     df = pd.DataFrame()
     to_check = name_to_properties(
-        "name_not_on_pcp", dict_class_to_code, dict_class_to_mass_fraction, df
+        "name_not_on_pcp",
+        checked_dict_class_to_code,
+        checked_dict_class_to_mass_fraction,
+        df,
     )
     df.loc["name_not_on_pcp", "iupac_name"] = "unidentified"
     assert_frame_equal(
@@ -63,25 +89,17 @@ def test_name_to_properties_name_not_on_pubchem_df_empty(
     )
 
 
-def test_name_to_properties_name_not_on_pubchem_df_not_empty(
-    dicts_classifications_codes_fractions,
-    checked_n2p_compounds_properties,
-):
-    dict_class_to_code, dict_class_to_mass_fraction = (
-        dicts_classifications_codes_fractions
-    )
+def test_name_to_properties_name_not_on_pubchem_df_not_empty():
     to_check = name_to_properties(
         "name_not_on_pcp",
-        dict_class_to_code,
-        dict_class_to_mass_fraction,
-        checked_n2p_compounds_properties,
+        checked_dict_class_to_code,
+        checked_dict_class_to_mass_fraction,
+        checked_properties,
     )
-    checked_n2p_compounds_properties.loc["name_not_on_pcp", "iupac_name"] = (
-        "unidentified"
-    )
+    checked_properties.loc["name_not_on_pcp", "iupac_name"] = "unidentified"
     assert_frame_equal(
         to_check,
-        checked_n2p_compounds_properties,
+        checked_properties,
         check_exact=False,
         atol=1e-5,
         rtol=1e-5,
@@ -104,18 +122,14 @@ def test_name_to_properties_name_not_on_pubchem_df_not_empty(
     ],
 )
 def test_name_to_properties_single_compounds(
-    compound, dicts_classifications_codes_fractions, checked_n2p_compounds_properties
+    compound,
 ):
-    dict_class_to_code, dict_class_to_mass_fraction = (
-        dicts_classifications_codes_fractions
-    )
-
     to_check = name_to_properties(
-        compound, dict_class_to_code, dict_class_to_mass_fraction
+        compound, checked_dict_class_to_code, checked_dict_class_to_mass_fraction
     )
     to_check = to_check.loc[[compound], :]
     to_check = to_check.loc[:, (to_check != 0).any(axis=0)]
-    checked = checked_n2p_compounds_properties.loc[[compound], :]
+    checked = checked_properties.loc[[compound], :]
     checked = checked.loc[:, (checked != 0).any(axis=0)]
     assert_frame_equal(
         to_check,
@@ -126,13 +140,7 @@ def test_name_to_properties_single_compounds(
     )
 
 
-def test_name_to_properties_all_compounds(
-    dicts_classifications_codes_fractions, checked_n2p_compounds_properties
-):
-    dict_class_to_code, dict_class_to_mass_fraction = (
-        dicts_classifications_codes_fractions
-    )
-
+def test_name_to_properties_all_compounds():
     compounds = [
         "2-methylcyclopent-2-en-1-one",  # Comment: small ketone
         "hexadecanoic acid",  # Comment: another compound
@@ -153,9 +161,12 @@ def test_name_to_properties_all_compounds(
     to_check = pd.DataFrame()
     for compound in compounds:
         to_check = name_to_properties(
-            compound, dict_class_to_code, dict_class_to_mass_fraction, to_check
+            compound,
+            checked_dict_class_to_code,
+            checked_dict_class_to_mass_fraction,
+            to_check,
         )
-    checked = checked_n2p_compounds_properties
+    checked = checked_properties
     assert_frame_equal(
         to_check,
         checked,
