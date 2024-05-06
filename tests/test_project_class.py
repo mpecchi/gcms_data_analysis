@@ -30,7 +30,8 @@ assert proj.acceptable_params == [
 # %%
 fic = proj.create_files_info(update_saved_files_info=False)
 fil = proj.load_files_info(update_saved_files_info=False)
-
+import pytest
+from gcms_data_analysis.gcms import Project
 
 fic.calibration_file = fil.calibration_file  # this cannot be updated automatically
 # assert_frame_equal(fil, fic, check_exact=False, atol=1e-5, rtol=1e-5)
@@ -63,6 +64,7 @@ scd = proj.create_semi_calibration_dict()
 
 # %%
 s1 = proj.apply_calib_to_single_file("S_1")
+s2 = proj.apply_calib_to_single_file("S_2")
 # %%
 fc = proj.apply_calibration_to_files()
 # %%
@@ -70,4 +72,17 @@ file_info_with_stats = proj.add_stats_to_files_info()
 
 # %%
 si_ave, si_std = proj.create_samples_info()
+# %%
+s_ave, s_std = proj.create_single_sample_from_files(
+    files_in_sample=[s1, s2], samplename="s"
+)
+
+samples, samples_std = proj.create_samples_from_files()
+
+# %%
+reph = proj.create_files_param_report(param="height")
+repc = proj.create_files_param_report(param="conc_vial_mg_L")
+# %%
+repsh, repsh_d = proj.create_samples_param_report(param="height")
+repsc, repsc_d = proj.create_samples_param_report(param="conc_vial_mg_L")
 # %%

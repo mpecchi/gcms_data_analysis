@@ -19,6 +19,42 @@ class Project:
     Represents a project (identified by the folder where the data is stored)
     for TGA data analysis.
 
+    :param folder_path: The path to the folder where the data is stored.
+    :type folder_path: Path or str
+    :param name: The name of the project. If not provided, it will be inferred from the folder path.
+    :type name: str, optional
+    :param use_semi_calibration: Whether to use semi-calibration for data analysis. Defaults to True.
+    :type use_semi_calibration: bool, optional
+    :param tanimoto_similarity_threshold: The threshold for Tanimoto similarity. Defaults to 0.4.
+    :type tanimoto_similarity_threshold: float, optional
+    :param delta_mol_weight_threshold: The threshold for delta molecular weight. Defaults to 100.
+    :type delta_mol_weight_threshold: int, optional
+    :param file_load_skiprows: The number of rows to skip when loading files. Defaults to 8.
+    :type file_load_skiprows: int, optional
+    :param file_load_delimiter: The delimiter used in the files. Defaults to "\t".
+    :type file_load_delimiter: {"\t", ",", ";"}, optional
+    :param file_load_format: The format of the files to load. Defaults to ".txt".
+    :type file_load_format: {".txt", ".csv"}, optional
+    :param column_to_sort_values_in_samples: The column to sort values in samples. Defaults to "retention_time".
+    :type column_to_sort_values_in_samples: {"retention_time", "area", "height"}, optional
+    :param plot_font: The font to use in plots. Defaults to "Dejavu Sans".
+    :type plot_font: {"Dejavu Sans", "Times New Roman"}, optional
+    :param plot_grid: Whether to show grid lines in plots. Defaults to False.
+    :type plot_grid: bool, optional
+    :param auto_save_to_excel: Whether to automatically save data to Excel files. Defaults to True.
+    :type auto_save_to_excel: bool, optional
+    :param columns_to_rename_and_keep_in_files: A dictionary mapping column names to new names to rename and keep in files.
+        If not provided, default mappings will be used. Defaults to None.
+    :type columns_to_rename_and_keep_in_files: dict[str, str] or None, optional
+    :param compounds_to_rename_in_files: A dictionary mapping compound names to new names to rename in files.
+        If not provided, no renaming will be performed. Defaults to None.
+    :type compounds_to_rename_in_files: dict[str, str] or None, optional
+    :param param_to_axis_label: A dictionary mapping parameter names to axis labels.
+        If not provided, default mappings will be used. Defaults to None.
+    :type param_to_axis_label: dict[str, str] or None, optional
+    :param string_in_deriv_names: A list of strings that may appear in derivative names.
+        If not provided, default strings will be used. Defaults to None.
+    :type string_in_deriv_names: list[str] or None, optional
     """
 
     def __init__(
@@ -119,14 +155,14 @@ class Project:
 
         self.samples_info: pd.DataFrame | None = None
         self.samples_info_std: pd.DataFrame | None = None
-        self.samples: dict[str, pd.DataFrame] | None = None
-        self.samples_std: dict[str, pd.DataFrame] | None = None
 
         self.list_of_files_param_reports = []
         self.list_of_files_param_aggrreps = []
         self.list_of_samples_param_reports = []
         self.list_of_samples_param_aggrreps = []
         self.files: dict[str, pd.DataFrame] = {}
+        self.samples: dict[str, pd.DataFrame] = {}
+        self.samples_std: dict[str, pd.DataFrame] = {}
         self.calibrations: dict[str : pd.DataFrame] = {}
         self.tanimoto_similarity_df: dict[str : pd.DataFrame] = {}
         self.molecular_weight_diff_df: dict[str : pd.DataFrame] = {}
@@ -144,7 +180,15 @@ class Project:
         self.acceptable_params: list[str] = list(self.param_to_axis_label.keys())
 
     def load_files_info(self, update_saved_files_info: bool = True) -> pd.DataFrame:
-        """ """
+        """
+        Loads the files information from an Excel file and returns it as a DataFrame.
+
+        :param update_saved_files_info: Specifies whether to update the saved files_info.xlsx file.
+        :type update_saved_files_info: bool, optional
+        :return: The loaded files information as a DataFrame.
+        :rtype: pd.DataFrame
+        """
+
         files_info_path = plib.Path(self.folder_path, "files_info.xlsx")
         if files_info_path.exists():
             files_info = pd.read_excel(
@@ -160,7 +204,14 @@ class Project:
         return self.files_info
 
     def create_files_info(self, update_saved_files_info: bool = False) -> pd.DataFrame:
-        """ """
+        """
+        Create a DataFrame containing information about the files in the folder.
+
+        :param update_saved_files_info: Whether to update the saved files_info.xlsx file. Defaults to False.
+        :type update_saved_files_info: bool, optional
+        :return: The DataFrame containing the files information.
+        :rtype: pd.DataFrame
+        """
         filename: list[str] = [
             a.parts[-1].split(".")[0] for a in list(self.folder_path.glob("**/*.txt"))
         ]
@@ -183,7 +234,19 @@ class Project:
     def _add_default_to_files_info(
         self, files_info_no_defaults: pd.DataFrame
     ) -> pd.DataFrame:
-        """ """
+        """Add default values to the files_info DataFrame.
+
+        This method takes a DataFrame `files_info_no_defaults` as input and adds default values to it.
+        The default values are added for the columns 'derivatized', 'calibration_file',
+        and any other columns specified in `self.files_info_defauls_columns`.
+
+        Args:
+            files_info_no_defaults (pd.DataFrame): The DataFrame containing files_info without default values.
+
+        Returns:
+            pd.DataFrame: The DataFrame with default values added.
+
+        """
         if "derivatized" not in list(files_info_no_defaults):
             files_info_no_defaults["derivatized"] = False
         if "calibration_file" not in list(files_info_no_defaults):
@@ -545,7 +608,7 @@ class Project:
             self.files[filename].loc[compname, "fraction_of_feedstock_fr"] = (
                 conc_mg_l / tot_sample_conc * sample_yield_feed_basis
             )
-            self.files[filename].loc[compname, "calibration-used"] = iupac_for_calib
+            self.files[filename].loc[compname, "calibration_used"] = iupac_for_calib
         if np.isnan(self.files[filename]["conc_vial_mg_L"]).all():
             print(
                 f"WARNING: the file {filename} does not contain any ",
@@ -631,6 +694,166 @@ class Project:
         self.samples_info_std = _samples_info_std[non_numcol + numcol]
         print("Info: create_samples_info: samples_info created")
         return self.samples_info, self.samples_info_std
+
+    def create_single_sample_from_files(
+        self, files_in_sample: list[pd.DataFrame], samplename: str
+    ):
+        """Creates a sample dataframe and a standard deviation dataframe from files
+        that are replicates of the same sample. This process includes aligning dataframes,
+        filling missing values, calculating averages and standard deviations,
+        and merging non-numerical data.
+
+        :param files_in_sample: A list of pandas DataFrames representing replicates of the same sample.
+        :param samplename: The name of the sample.
+
+        :return: A tuple containing the sample dataframe and the standard deviation dataframe.
+        :rtype: tuple[pd.DataFrame, pd.DataFrame]
+        """
+        all_ordered_columns = files_in_sample[0].columns.tolist()
+
+        non_num_columns = [
+            col
+            for col in ["iupac_name", "calibration_used"]
+            if col in all_ordered_columns
+        ]
+        # Step 1: Create a comprehensive index of all unique compounds
+        all_compounds = pd.Index([])
+        for df in files_in_sample:
+            all_compounds = all_compounds.union(df.index)
+
+        # Step 2: Align all DataFrames to the comprehensive index
+        aligned_dfs: list[pd.DataFrame] = [
+            df.reindex(all_compounds) for df in files_in_sample
+        ]
+        # Fill NaN values for numerical columns after alignment and before concatenation
+        filled_dfs = [df.fillna(0.0) for df in aligned_dfs]
+        # Keep non-numerical data separately and ensure no duplicates
+        non_num_data: pd.DataFrame = pd.concat(
+            [df[non_num_columns].drop_duplicates() for df in files_in_sample]
+        ).drop_duplicates()
+        # Separating numerical data to fill NaNs with zeros
+        num_data_filled = [df.drop(columns=non_num_columns) for df in filled_dfs]
+        # Calculating the average and std for numerical data
+        sample = pd.concat(num_data_filled).groupby(level=0).mean().astype(float)
+        sample_std = pd.concat(num_data_filled).groupby(level=0).std().astype(float)
+        # Merging non-numerical data with the numerical results
+        sample = sample.merge(
+            non_num_data, left_index=True, right_index=True, how="left"
+        )
+        sample_std = sample_std.merge(
+            non_num_data, left_index=True, right_index=True, how="left"
+        )
+        sample = sample.sort_values(by=self.column_to_sort_values_in_samples)
+        # Apply the same order to 'sample_std' using reindex
+        sample_std = sample_std.reindex(sample.index)
+        sample = sample[all_ordered_columns]
+        sample_std = sample_std[all_ordered_columns]
+        sample.index.name = samplename
+        sample_std.index.name = samplename
+
+        return sample, sample_std
+
+    def create_samples_from_files(self):
+        """Generates a DataFrame for each sample by averaging and calculating
+        the standard deviation of replicates, creating a comprehensive
+        dataset for each sample in the project.
+
+        Returns:
+            tuple: A tuple containing two dictionaries. The first dictionary
+            contains the generated DataFrame for each sample, where the key
+            is the sample name and the value is the DataFrame. The second
+            dictionary contains the standard deviation for each sample, where
+            the key is the sample name and the value is the standard deviation.
+        """
+        if self.samples_info is None:
+            self.create_samples_info()
+        for samplename in self.samples_info.index:
+            print("Sample: ", samplename)
+            _files = []
+            for filename in self.files_info.index[
+                self.files_info["samplename"] == samplename
+            ]:
+                print("\tFile: ", filename)
+                _files.append(self.files[filename])
+            sample, sample_std = self.create_single_sample_from_files(
+                _files, samplename
+            )
+            self.samples[samplename] = sample
+            self.samples_std[samplename] = sample_std
+        return self.samples, self.samples_std
+
+    def create_files_param_report(self, param="conc_vial_mg_L"):
+        """
+        Create a report that consolidates the values of a specified parameter from different DataFrames,
+        using the union of all indices found in the individual DataFrames.
+
+        :param param: The parameter to extract from each DataFrame. Defaults to "conc_vial_mg_L".
+        :return: A DataFrame containing the consolidated report.
+        """
+        if not self.files:
+            self.load_all_files()
+        if param not in self.acceptable_params:
+            raise ValueError(f"{param = } is not an acceptable param")
+        # Create a dictionary of Series, each Series named after the file and containing the 'param' values
+        series_dict = {
+            filename: self.files[filename][param].rename(filename)
+            for filename in self.files_info.index
+        }
+        # Get the union of all indices from the individual DataFrames
+        rep = pd.concat(
+            series_dict.values(), axis=1, keys=series_dict.keys(), join="outer"
+        )
+        # Reindex the DataFrame to include all unique indices, filling missing values with 0
+        rep = rep.fillna(0)
+        rep = rep.sort_index(key=rep.max(axis=1).get, ascending=False)
+        rep = rep.loc[:, rep.any(axis=0)]
+        # Save and return the report
+        self.files_reports[param] = rep
+        self.list_of_files_param_reports.append(param)
+        return self.files_reports[param]
+
+    def create_samples_param_report(self, param="conc_vial_mg_L"):
+        """
+        Create two reports that consolidate the average and standard deviation of a specified parameter
+        from different sample DataFrames, assuming both sets of DataFrames share the same indices.
+
+        :param param: The parameter to extract from each DataFrame. Defaults to "conc_vial_mg_L".
+        :return: A tuple of two DataFrames containing the consolidated averages and standard deviations.
+        """
+        if not self.samples:
+            self.create_samples_from_files()
+
+        series_dict = {
+            samplename: self.samples[samplename][param].rename(samplename)
+            for samplename in self.samples_info.index
+            if param in self.samples[samplename].columns
+        }
+        series_dict_std = {
+            samplename: self.samples_std[samplename][param].rename(samplename)
+            for samplename in self.samples_info.index
+            if param in self.samples_std[samplename].columns
+        }
+        # Get the union of all indices from the individual sample DataFrames (assuming indices are the same for std and avg)
+        rep = pd.concat(
+            series_dict.values(), axis=1, keys=series_dict.keys(), join="outer"
+        )
+        rep_std = pd.concat(
+            series_dict_std.values(), axis=1, keys=series_dict_std.keys(), join="outer"
+        )
+        # Populate the DataFrames with values
+
+        # Sort by the max value in each row and filter out columns that only contain 0s in the average report
+        rep = rep.sort_index(key=rep.max(axis=1).get, ascending=False)
+        rep = rep.loc[:, rep.any(axis=0)]
+        # Ensure the standard deviation DataFrame aligns with the average DataFrame
+        rep_std = rep_std.reindex_like(rep)
+
+        # Save and return the reports
+        self.samples_reports[param] = rep.fillna(0)
+        self.samples_reports_std[param] = rep_std
+        self.list_of_samples_param_reports.append(param)
+
+        return self.samples_reports[param], self.samples_reports_std[param]
 
 
 def create_tanimoto_similarity_dict(
