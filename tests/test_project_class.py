@@ -74,15 +74,104 @@ file_info_with_stats = proj.add_stats_to_files_info()
 si_ave, si_std = proj.create_samples_info()
 # %%
 s_ave, s_std = proj.create_single_sample_from_files(
-    files_in_sample=[s1, s2], samplename="s"
+    files_in_sample=[s1, s2], samplename="S"
 )
+# check that the average between s1 and s2 is the same as s_ave for area
+for param in proj.acceptable_params:
+    print(f"{param = }")
+    for compound in s1.index.drop("notvalidcomp").drop("dichlorobenzene"):
+        print(f"\t {compound = }")
 
+        # print(f"\t\t {s1.loc[compound, param] = }")
+        # print(f"\t\t {s2.loc[compound, param] = }")
+        # print(f"\t\t {s_ave.loc[compound, param] = }")
+        if compound not in s2.index:
+            assert np.isclose(
+                s_ave.loc[compound, param],
+                (s1.loc[compound, param] + 0) / 2,
+            )
+        else:
+            assert np.isclose(
+                s_ave.loc[compound, param],
+                (s1.loc[compound, param] + s2.loc[compound, param]) / 2,
+            )
+    # do the same for the standard deviation
+
+    for compound in s1.index.drop("notvalidcomp").drop("dichlorobenzene"):
+        if compound not in s2.index:
+            assert np.isclose(
+                s_std.loc[compound, param], np.std((s1.loc[compound, param], 0), ddof=1)
+            )
+        else:
+            assert np.isclose(
+                s_std.loc[compound, param],
+                np.std((s1.loc[compound, param], s2.loc[compound, param]), ddof=1),
+            )
+
+# %%
+
+# %%
 samples, samples_std = proj.create_samples_from_files()
 
 # %%
 reph = proj.create_files_param_report(param="height")
 repc = proj.create_files_param_report(param="conc_vial_mg_L")
 # %%
+# Test that for each file and parameter, values match with the original file in the reports
+
+for param in proj.acceptable_params:
+    print(f"{param=}")
+    rep = proj.create_files_param_report(param)
+    for filename, file in files.items():
+        print(f"\t{filename=}")
+        for compound in file.index:
+            print(f"\t\t{compound=}")
+            original_values = file.loc[compound, param]
+            try:
+                report_values = rep.loc[compound, filename]
+                assert np.allclose(original_values, report_values)
+            except KeyError:
+                assert np.isnan(original_values) or original_values == 0
+# %%
+for param in proj.acceptable_params:
+    print(f"{param=}")
+    rep, rep_std = proj.create_samples_param_report(param)
+    for samplename, sample in samples.items():
+        sample_std = proj.samples_std[samplename]
+        print(f"\t{samplename=}")
+        for compound in sample.index:
+            print(f"\t\t{compound=}")
+            original_values = sample.loc[compound, param]
+            original_values_std = sample_std.loc[compound, param]
+            try:
+                report_values = rep.loc[compound, samplename]
+                report_values_std = rep_std.loc[compound, samplename]
+                assert np.allclose(original_values, report_values)
+                assert np.allclose(original_values_std, report_values_std)
+            except KeyError:
+                assert np.isnan(original_values) or original_values == 0
+
+
+# %%
+
+print(reph)
+print(repc)
+# %%
 repsh, repsh_d = proj.create_samples_param_report(param="height")
 repsc, repsc_d = proj.create_samples_param_report(param="conc_vial_mg_L")
+print(repsh)
+print(repsc)
 # %%
+aggh = proj.create_files_param_aggrrep(param="height")
+aggc = proj.create_files_param_aggrrep(param="conc_vial_mg_L")
+print(aggh)
+print(aggc)
+
+aggsh, aggsh_d = proj.create_samples_param_aggrrep(param="height")
+aggsc, aggsc_d = proj.create_samples_param_aggrrep(param="conc_vial_mg_L")
+print(aggsh)
+print(aggsh_d)
+print(aggsc)
+print(aggsc_d)
+# %%
+proj.save_files_samples_reports()

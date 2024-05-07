@@ -156,10 +156,6 @@ class Project:
         self.samples_info: pd.DataFrame | None = None
         self.samples_info_std: pd.DataFrame | None = None
 
-        self.list_of_files_param_reports = []
-        self.list_of_files_param_aggrreps = []
-        self.list_of_samples_param_reports = []
-        self.list_of_samples_param_aggrreps = []
         self.files: dict[str, pd.DataFrame] = {}
         self.samples: dict[str, pd.DataFrame] = {}
         self.samples_std: dict[str, pd.DataFrame] = {}
@@ -806,54 +802,159 @@ class Project:
         # Reindex the DataFrame to include all unique indices, filling missing values with 0
         rep = rep.fillna(0)
         rep = rep.sort_index(key=rep.max(axis=1).get, ascending=False)
-        rep = rep.loc[:, rep.any(axis=0)]
+        # remove null columns from rep
+        rep = rep.loc[rep.any(axis=1), :]
         # Save and return the report
         self.files_reports[param] = rep
-        self.list_of_files_param_reports.append(param)
         return self.files_reports[param]
 
-    def create_samples_param_report(self, param="conc_vial_mg_L"):
-        """
-        Create two reports that consolidate the average and standard deviation of a specified parameter
-        from different sample DataFrames, assuming both sets of DataFrames share the same indices.
+    def create_files_param_aggrrep(self, param="conc_vial_mg_L"):
+        """Aggregates compound concentration data by functional group for each
+        parameter across all FILES, providing a summarized view of functional
+        group concentrations. This aggregation facilitates the understanding
+        of functional group distribution across FILES."""
+        print("Info: create_param_aggrrep: ", param)
+        if param not in self.acceptable_params:
+            raise ValueError(f"{param = } is not an acceptable param")
+        if param not in self.files_reports:
+            self.create_files_param_report(param)
+        # create a df with iupac name index and fg_mf columns (underiv and deriv)
+        comps_df = self.compounds_properties  # .set_index("iupac_name")
+        # comps_df = comps_df[~comps_df.index.duplicated(keep="first")]
 
-        :param param: The parameter to extract from each DataFrame. Defaults to "conc_vial_mg_L".
-        :return: A tuple of two DataFrames containing the consolidated averages and standard deviations.
-        """
-        if not self.samples:
-            self.create_samples_from_files()
+        # fg = functional groups, mf = mass fraction
+        filenames = self.files_info.index.tolist()
+        _all_comps = self.files_reports[param].index.tolist()
+        _all_comps = [comp for comp in _all_comps if comp != "unidentified"]
+        fg_mf_labs = [
+            c for c in comps_df.columns if c.startswith("fg_mf_") if c != "fg_mf_total"
+        ]
+        fg_labs = [c[6:] for c in fg_mf_labs]
 
-        series_dict = {
-            samplename: self.samples[samplename][param].rename(samplename)
-            for samplename in self.samples_info.index
-            if param in self.samples[samplename].columns
-        }
-        series_dict_std = {
-            samplename: self.samples_std[samplename][param].rename(samplename)
-            for samplename in self.samples_info.index
-            if param in self.samples_std[samplename].columns
-        }
-        # Get the union of all indices from the individual sample DataFrames (assuming indices are the same for std and avg)
-        rep = pd.concat(
-            series_dict.values(), axis=1, keys=series_dict.keys(), join="outer"
+        fg_mf_all = pd.DataFrame(index=_all_comps, columns=fg_mf_labs)
+        for idx in fg_mf_all.index.tolist():
+            fg_mf_all.loc[idx, fg_mf_labs] = comps_df.loc[idx, fg_mf_labs]
+        # create the aggregated dataframes and compute aggregated results
+        aggrrep = pd.DataFrame(columns=filenames, index=fg_labs, dtype="float")
+        aggrrep.fillna(0, inplace=True)
+        for col in filenames:
+            list_iupac = self.files_reports[param].index
+            signal = self.files_reports[param].loc[:, col].values
+            for fg, fg_mf in zip(fg_labs, fg_mf_labs):
+                # each compound contributes to the cumulative sum of each
+                # functional group for the based on the mass fraction it has
+                # of that functional group (fg_mf act as weights)
+                # if fg_mf in subrep: multiply signal for weight and sum
+                # to get aggregated
+                weights = fg_mf_all.loc[list_iupac, fg_mf].astype(signal.dtype)
+
+                aggrrep.loc[fg, col] = (signal * weights).sum()
+        aggrrep = aggrrep.loc[aggrrep.any(axis=1), :]  # drop rows with only 0
+        aggrrep = aggrrep.sort_index(key=aggrrep[filenames].max(1).get, ascending=False)
+        self.files_aggrreps[param] = aggrrep
+        return aggrrep
+
+    def create_samples_param_report(self, param: str = "conc_vial_mg_L"):
+        print(f"Info: create_samples_param_report: {param = }")
+        if param not in self.acceptable_params:
+            raise ValueError(f"{param = } is not an acceptable param")
+        if param not in self.files_reports:
+            self.create_files_param_report(param)
+        file_to_sample_rename = dict(
+            zip(self.files_info.index.tolist(), self.files_info["samplename"])
         )
-        rep_std = pd.concat(
-            series_dict_std.values(), axis=1, keys=series_dict_std.keys(), join="outer"
-        )
-        # Populate the DataFrames with values
-
-        # Sort by the max value in each row and filter out columns that only contain 0s in the average report
-        rep = rep.sort_index(key=rep.max(axis=1).get, ascending=False)
-        rep = rep.loc[:, rep.any(axis=0)]
-        # Ensure the standard deviation DataFrame aligns with the average DataFrame
-        rep_std = rep_std.reindex_like(rep)
-
-        # Save and return the reports
-        self.samples_reports[param] = rep.fillna(0)
-        self.samples_reports_std[param] = rep_std
-        self.list_of_samples_param_reports.append(param)
-
+        filerep = self.files_reports[param].copy()
+        filerep.rename(columns=file_to_sample_rename, inplace=True)
+        self.samples_reports[param] = filerep.T.groupby(by=filerep.columns).mean().T
+        self.samples_reports_std[param] = filerep.T.groupby(by=filerep.columns).std().T
         return self.samples_reports[param], self.samples_reports_std[param]
+
+    def create_samples_param_aggrrep(self, param: str = "conc_vial_mg_L"):
+        print(f"Info: create_samples_param_aggrrep: {param = }")
+        if param not in self.acceptable_params:
+            raise ValueError(f"{param = } is not an acceptable param")
+        if param not in self.files_aggrreps:
+            self.create_files_param_aggrrep(param)
+        file_to_sample_rename = dict(
+            zip(self.files_info.index.tolist(), self.files_info["samplename"])
+        )
+        fileagg = self.files_aggrreps[param].copy()
+        fileagg.rename(columns=file_to_sample_rename, inplace=True)
+        self.samples_aggrreps[param] = fileagg.T.groupby(by=fileagg.columns).mean().T
+        self.samples_aggrreps_std[param] = fileagg.T.groupby(by=fileagg.columns).std().T
+        return self.samples_aggrreps[param], self.samples_aggrreps_std[param]
+
+    def save_files_samples_reports(self):
+        """"""
+        for subfolder in [
+            "",
+            "files",
+            "samples",
+            "files_reports",
+            "files_aggrreps",
+            "samples_reports",
+            "samples_aggrreps",
+        ]:
+            plib.Path(self.out_path, subfolder).mkdir(parents=True, exist_ok=True)
+        out_path = self.out_path
+        # save files_info and samples_info to the general output folder
+        if self.files_info is not None:
+            self.files_info.to_excel(plib.Path(out_path, "files_info.xlsx"))
+        if self.samples_info is not None:
+            self.samples_info.to_excel(plib.Path(out_path, "samples_info.xlsx"))
+            self.samples_info_std.to_excel(plib.Path(out_path, "samples_info_std.xlsx"))
+        if self.files:
+            for filename, df in self.files.items():
+                df.to_excel(plib.Path(out_path, "files", f"{filename}.xlsx"))
+        if self.samples:
+            for samplename, df in self.samples.items():
+                df.to_excel(plib.Path(out_path, "samples", f"{samplename}.xlsx"))
+            for samplename, df in self.samples_std.items():
+                df.to_excel(plib.Path(out_path, "samples", f"{samplename}_std.xlsx"))
+        if self.files_reports:
+            for param, df in self.files_reports.items():
+                df.to_excel(
+                    plib.Path(out_path, "files_reports", f"report_files_{param}.xlsx")
+                )
+        if self.files_aggrreps:
+            for param, df in self.files_aggrreps.items():
+                df.to_excel(
+                    plib.Path(
+                        self.out_path, "files_aggrreps", f"aggrrep_files_{param}.xlsx"
+                    )
+                )
+        if self.samples_reports:
+            for param, df in self.samples_reports.items():
+                df.to_excel(
+                    plib.Path(
+                        self.out_path, "samples_reports", f"report_samples_{param}.xlsx"
+                    )
+                )
+            for param, df in self.samples_reports_std.items():
+                df.to_excel(
+                    plib.Path(
+                        self.out_path,
+                        "samples_reports",
+                        f"report_samples_{param}_std.xlsx",
+                    )
+                )
+        if self.samples_aggrreps:
+            for param, df in self.samples_aggrreps.items():
+                df.to_excel(
+                    plib.Path(
+                        self.out_path,
+                        "samples_aggrreps",
+                        f"aggrrep_samples_{param}.xlsx",
+                    )
+                )
+            for param, df in self.samples_aggrreps_std.items():
+                df.to_excel(
+                    plib.Path(
+                        self.out_path,
+                        "samples_aggrreps",
+                        f"aggrrep_samples_{param}_std.xlsx",
+                    )
+                )
 
 
 def create_tanimoto_similarity_dict(
