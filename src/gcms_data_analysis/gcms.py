@@ -453,6 +453,14 @@ class Project:
     def create_tanimoto_and_molecular_weight_similarity_dfs(
         self,
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        if not self.files:
+            self.load_all_files()
+        if not self.calibrations:
+            self.load_calibrations()
+        if self.compounds_properties is None:
+            self.load_compounds_properties()
+        if self.dict_names_to_iupacs is None:
+            self.create_dict_names_to_iupacs()
         if "iupac_name" not in list(self.files.values())[0].columns:
             self.add_iupac_to_files_and_calibrations()
         prop_index_iupac = self.compounds_properties.set_index("iupac_name")
