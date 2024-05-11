@@ -9,7 +9,7 @@ from matplotlib.transforms import blended_transform_factory
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 import matplotlib.pyplot as plt
-from gcms_data_analysis.main import Project
+from gcms_data_analysis.old_main import Project
 
 
 lttrs: list[str] = list(string.ascii_lowercase)
