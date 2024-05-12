@@ -60,7 +60,7 @@ class Project:
     def __init__(
         self,
         folder_path: plib.Path | str,
-        name: str | None = None,
+        projectname: str | None = None,
         use_semi_calibration: bool = True,
         tanimoto_similarity_threshold: float = 0.4,
         delta_mol_weight_threshold: int = 100,
@@ -80,10 +80,10 @@ class Project:
     ):
         self.folder_path = plib.Path(folder_path)
         self.out_path = plib.Path(self.folder_path, "output")
-        if name is None:
-            self.name = self.folder_path.parts[-1]
+        if projectname is None:
+            self.projectname = self.folder_path.parts[-1]
         else:
-            self.name = name
+            self.projectname = projectname
         self.use_semi_calibration = use_semi_calibration
         self.tanimoto_similarity_threshold = tanimoto_similarity_threshold
         self.delta_mol_weight_threshold = delta_mol_weight_threshold
