@@ -8,11 +8,11 @@ import ele
 import pubchempy as pcp
 from gcms_data_analysis.fragmenter import Fragmenter
 
-from gcms_data_analysis import name_to_properties
+from gcms_data_analysis.gcms import name_to_properties
 
 
 folder_path = plib.Path(
-    r"C:\Users\mp933\OneDrive - Cornell University\Python\gcms_data_analysis\tests\data_name_to_properties"
+    r"/Users/matteo/Projects/gcms_data_analysis/example/name_to_properties/data_name_to_properties"
 )
 # %%
 classifications_codes_fractions = pd.read_excel(

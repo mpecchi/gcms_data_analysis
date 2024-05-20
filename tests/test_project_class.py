@@ -10,13 +10,15 @@ import shutil
 folder_path: plib.Path = plib.Path(__file__).parent
 
 folder_path = r"/Users/matteo/Projects/gcms_data_analysis/tests/data_minimal_case"
-# %%
+
 proj = Project(
     folder_path=folder_path,
     auto_save_to_excel=False,
-    compounds_to_rename_in_files={"almost oleic acid": "oleic acid"},
+    compounds_to_rename_in_files={
+        "almost oleic acid": "oleic acid",
+        "dichlorobenzene": "p-dichlorobenzene",
+    },
 )
-
 # %%
 files_info_created = proj.create_files_info(update_saved_files_info=False)
 print(files_info_created.T)
@@ -79,28 +81,321 @@ sample1_ave, sample1_std = proj.create_single_sample_from_files(
 samples, samples_std = proj.create_samples_from_files()
 # %%
 reph = proj.create_files_param_report(param="height")
-repc = proj.create_files_param_report(param="conc_vial_mg_L")
 print(reph)
+
+repc = proj.create_files_param_report(param="conc_vial_mg_L")
 print(repc)
 # %%
 repsh, repsh_d = proj.create_samples_param_report(param="height")
-repsc, repsc_d = proj.create_samples_param_report(param="conc_vial_mg_L")
 print(repsh)
+repsc, repsc_d = proj.create_samples_param_report(param="conc_vial_mg_L")
 print(repsc)
 # %%
 aggh = proj.create_files_param_aggrrep(param="height")
-aggc = proj.create_files_param_aggrrep(param="conc_vial_mg_L")
 print(aggh)
+# %%
+aggc = proj.create_files_param_aggrrep(param="conc_vial_mg_L")
+
 print(aggc)
 # %%
 aggsh, aggsh_d = proj.create_samples_param_aggrrep(param="height")
-aggsc, aggsc_d = proj.create_samples_param_aggrrep(param="conc_vial_mg_L")
 print(aggsh)
 print(aggsh_d)
+# %%
+aggsc, aggsc_d = proj.create_samples_param_aggrrep(param="conc_vial_mg_L")
+
 print(aggsc)
 print(aggsc_d)
 # %%
 proj.save_files_samples_reports()
+# %%
+
+proj.plot_report()
+
+# %%
+
+
+@pytest.fixture
+def project():
+    test_project = Project(
+        folder_path=folder_path,
+        auto_save_to_excel=False,
+        compounds_to_rename_in_files={"almost oleic acid": "oleic acid"},
+    )
+    return test_project
+
+
+# Test default parameters
+def test_default_parameters(project):
+    assert proj.column_to_sort_values_in_samples == "retention_time"
+    assert proj.delta_mol_weight_threshold == 100
+    assert proj.acceptable_params == [
+        "height",
+        "area",
+        "area_if_undiluted",
+        "conc_vial_mg_L",
+        "conc_vial_if_undiluted_mg_L",
+        "fraction_of_sample_fr",
+        "fraction_of_feedstock_fr",
+    ]
+    assert proj.compounds_to_rename_in_files == {"almost oleic acid": "oleic acid"}
+
+
+# Test the `load_files_info` method
+def test_load_files_info(project):
+    files_info = proj.load_files_info()
+    assert isinstance(files_info, pd.DataFrame)
+    assert len(files_info) > 0
+
+
+# Test the `load_all_files` method
+def test_load_all_files(project):
+    files = proj.load_all_files()
+    assert isinstance(files, dict)
+    assert len(files) > 0
+
+
+# Test the `load_class_code_frac` method
+def test_load_class_code_frac(project):
+    class_code_frac = proj.load_class_code_frac()
+    assert isinstance(class_code_frac, pd.DataFrame)
+    assert len(class_code_frac) > 0
+
+
+# Test the `load_calibrations` method
+def test_load_calibrations(project):
+    calibrations = proj.load_calibrations()
+    assert isinstance(calibrations, dict)
+    assert len(calibrations) > 0
+
+
+# Test the `create_list_of_all_compounds` method
+def test_create_list_of_all_compounds(project):
+    compounds = proj.create_list_of_all_compounds()
+    assert isinstance(compounds, list)
+    assert len(compounds) > 0
+
+
+# Test the `create_compounds_properties` method
+def test_create_compounds_properties(project):
+    compounds_properties = proj.create_compounds_properties()
+    assert isinstance(compounds_properties, pd.DataFrame)
+    assert len(compounds_properties) > 0
+
+
+assert_frame_equal(
+    compounds_properties_created,
+    compounds_properties_loaded,
+    check_exact=False,
+    atol=1e-5,
+    rtol=1e-5,
+    check_dtype=False,
+)
+
+
+# Test the `create_dict_names_to_iupacs` method
+def test_create_dict_names_to_iupacs(project):
+    dict_names_to_iupacs = proj.create_dict_names_to_iupacs()
+    assert isinstance(dict_names_to_iupacs, dict)
+    assert len(dict_names_to_iupacs) > 0
+
+
+# Test the `add_iupac_to_files_and_calibrations` method
+def test_add_iupac_to_files_and_calibrations(project):
+    files_iupac, calibration_iupac = proj.add_iupac_to_files_and_calibrations()
+    assert isinstance(files_iupac, dict)
+    assert isinstance(calibration_iupac, dict)
+    assert len(files_iupac) > 0
+    assert len(calibration_iupac) > 0
+
+
+# Test the `create_tanimoto_and_molecular_weight_similarity_dfs` method
+def test_create_tanimoto_and_molecular_weight_similarity_dfs(project):
+
+    tanimoto_df, mw_similarity_df = (
+        proj.create_tanimoto_and_molecular_weight_similarity_dfs()
+    )
+    assert isinstance(tanimoto_df, pd.DataFrame)
+    assert isinstance(mw_similarity_df, pd.DataFrame)
+    assert len(tanimoto_df) > 0
+    assert len(mw_similarity_df) > 0
+
+
+# Test the `apply_calib_to_single_file` method
+def test_apply_calib_to_single_file(project):
+    file_name = "S_1"
+    calibrated_file = proj.apply_calib_to_single_file(file_name)
+    assert isinstance(calibrated_file, pd.DataFrame)
+    assert len(calibrated_file) > 0
+
+
+# Test the `apply_calibration_to_files` method
+def test_apply_calibration_to_files(project):
+    calibrated_files = proj.apply_calibration_to_files()
+    assert isinstance(calibrated_files, dict)
+    assert len(calibrated_files) > 0
+
+
+# Test the `add_stats_to_files_info` method
+def test_add_stats_to_files_info(project):
+    files_info_with_stats = proj.add_stats_to_files_info()
+    assert isinstance(files_info_with_stats, pd.DataFrame)
+    assert len(files_info_with_stats) > 0
+
+
+# Test the `create_samples_info` method
+def test_create_samples_info(project):
+    samples_info, samples_info_std = proj.create_samples_info()
+    assert isinstance(samples_info, pd.DataFrame)
+    assert isinstance(samples_info_std, pd.DataFrame)
+    assert len(samples_info) > 0
+    assert len(samples_info_std) > 0
+
+
+# Test the `create_single_sample_from_files` method
+def test_create_single_sample_from_files(project):
+    files_in_sample = ["S_1", "S_2"]
+    sample_name = "S"
+    single_sample = proj.create_single_sample_from_files(files_in_sample, sample_name)
+    assert isinstance(single_sample, pd.DataFrame)
+    assert len(single_sample) > 0
+
+
+# Test the `create_samples_from_files` method
+def test_create_samples_from_files(project):
+    samples, samples_std = proj.create_samples_from_files()
+    assert isinstance(samples, dict)
+    assert isinstance(samples_std, dict)
+    assert len(samples) > 0
+    assert len(samples_std) > 0
+
+
+# Test the `create_files_param_report` method
+def test_create_files_param_report(project):
+    param = "height"
+    files_param_report = proj.create_files_param_report(param)
+    assert isinstance(files_param_report, pd.DataFrame)
+    assert len(files_param_report) > 0
+
+
+# Test the `create_samples_param_report` method
+def test_create_samples_param_report(project):
+    param = "height"
+    samples_param_report, samples_param_report_std = proj.create_samples_param_report(
+        param
+    )
+    assert isinstance(samples_param_report, pd.DataFrame)
+    assert isinstance(samples_param_report_std, pd.DataFrame)
+    assert len(samples_param_report) > 0
+    assert len(samples_param_report_std) > 0
+
+
+# Test the `create_files_param_aggrrep` method
+def test_create_files_param_aggrrep(project):
+    param = "height"
+    files_param_aggrrep = proj.create_files_param_aggrrep(param)
+    assert isinstance(files_param_aggrrep, pd.DataFrame)
+    assert len(files_param_aggrrep) > 0
+
+
+# Test the `create_samples_param_aggrrep` method
+def test_create_samples_param_aggrrep(project):
+    param = "height"
+    samples_param_aggrrep, samples_param_aggrrep_std = (
+        proj.create_samples_param_aggrrep(param)
+    )
+    assert isinstance(samples_param_aggrrep, pd.DataFrame)
+    assert isinstance(samples_param_aggrrep_std, pd.DataFrame)
+    assert len(samples_param_aggrrep) > 0
+    assert len(samples_param_aggrrep_std) > 0
+
+
+# Test the `save_files_samples_reports` method
+def test_save_files_samples_reports(project):
+    proj.save_files_samples_reports()
+    # Add assertions to check if the reports are saved successfully
+    # Test the default parameters
+    for subfolder in [
+        "",
+        "files",
+        "samples",
+        "files_reports",
+        "files_aggrreps",
+        "samples_reports",
+        "samples_aggrreps",
+    ]:
+        assert (folder_path / "output" / subfolder).exists()
+        assert len(list((folder_path / "output" / subfolder).iterdir())) > 0
+
+    # Remove the output folder
+    # shutil.rmtree(folder_path / "output")
+
+
+# check that the average between s1 and s2 is the same as s_ave for area
+for param in proj.acceptable_params:
+    print(f"{param = }")
+    for compound in s1.index.drop("notvalidcomp").drop("dichlorobenzene"):
+        print(f"\t {compound = }")
+
+        if compound not in s2.index:
+            assert np.isclose(
+                s_ave.loc[compound, param],
+                (s1.loc[compound, param] + 0) / 2,
+            )
+        else:
+            assert np.isclose(
+                s_ave.loc[compound, param],
+                (s1.loc[compound, param] + s2.loc[compound, param]) / 2,
+            )
+    # do the same for the standard deviation
+
+    for compound in s1.index.drop("notvalidcomp").drop("dichlorobenzene"):
+        if compound not in s2.index:
+            assert np.isclose(
+                s_std.loc[compound, param], np.std((s1.loc[compound, param], 0), ddof=1)
+            )
+        else:
+            assert np.isclose(
+                s_std.loc[compound, param],
+                np.std((s1.loc[compound, param], s2.loc[compound, param]), ddof=1),
+            )
+
+# Test that for each file and parameter, values match with the original file in the reports
+
+for param in proj.acceptable_params:
+    print(f"{param=}")
+    rep = proj.create_files_param_report(param)
+    for filename, file in files.items():
+        print(f"\t{filename=}")
+        for compound in file.index:
+            print(f"\t\t{compound=}")
+            original_values = file.loc[compound, param]
+            try:
+                report_values = rep.loc[compound, filename]
+                assert np.allclose(original_values, report_values)
+            except KeyError:
+                assert np.isnan(original_values) or original_values == 0
+# %%
+for param in proj.acceptable_params:
+    print(f"{param=}")
+    rep, rep_std = proj.create_samples_param_report(param)
+    for samplename, sample in samples.items():
+        sample_std = proj.samples_std[samplename]
+        print(f"\t{samplename=}")
+        for compound in sample.index:
+            print(f"\t\t{compound=}")
+            original_values = sample.loc[compound, param]
+            original_values_std = sample_std.loc[compound, param]
+            try:
+                report_values = rep.loc[compound, samplename]
+                report_values_std = rep_std.loc[compound, samplename]
+                assert np.allclose(original_values, report_values)
+                assert np.allclose(original_values_std, report_values_std)
+            except KeyError:
+                assert np.isnan(original_values) or original_values == 0
+
+
+# %%
 # %%
 from __future__ import annotations
 from typing import Literal
@@ -456,289 +751,3 @@ def plot_df_ave_std(
         _annotate_outliers_in_plot(myfig.axs[0], df_ave, df_std, y_lim)
     myfig.save_figure(filename, out_path)
     return myfig
-
-
-# %%
-
-
-@pytest.fixture
-def project():
-    test_project = Project(
-        folder_path=folder_path,
-        auto_save_to_excel=False,
-        compounds_to_rename_in_files={"almost oleic acid": "oleic acid"},
-    )
-    return test_project
-
-
-# Test default parameters
-def test_default_parameters(project):
-    assert proj.column_to_sort_values_in_samples == "retention_time"
-    assert proj.delta_mol_weight_threshold == 100
-    assert proj.acceptable_params == [
-        "height",
-        "area",
-        "area_if_undiluted",
-        "conc_vial_mg_L",
-        "conc_vial_if_undiluted_mg_L",
-        "fraction_of_sample_fr",
-        "fraction_of_feedstock_fr",
-    ]
-    assert proj.compounds_to_rename_in_files == {"almost oleic acid": "oleic acid"}
-
-
-# Test the `load_files_info` method
-def test_load_files_info(project):
-    files_info = proj.load_files_info()
-    assert isinstance(files_info, pd.DataFrame)
-    assert len(files_info) > 0
-
-
-# Test the `load_all_files` method
-def test_load_all_files(project):
-    files = proj.load_all_files()
-    assert isinstance(files, dict)
-    assert len(files) > 0
-
-
-# Test the `load_class_code_frac` method
-def test_load_class_code_frac(project):
-    class_code_frac = proj.load_class_code_frac()
-    assert isinstance(class_code_frac, pd.DataFrame)
-    assert len(class_code_frac) > 0
-
-
-# Test the `load_calibrations` method
-def test_load_calibrations(project):
-    calibrations = proj.load_calibrations()
-    assert isinstance(calibrations, dict)
-    assert len(calibrations) > 0
-
-
-# Test the `create_list_of_all_compounds` method
-def test_create_list_of_all_compounds(project):
-    compounds = proj.create_list_of_all_compounds()
-    assert isinstance(compounds, list)
-    assert len(compounds) > 0
-
-
-# Test the `create_compounds_properties` method
-def test_create_compounds_properties(project):
-    compounds_properties = proj.create_compounds_properties()
-    assert isinstance(compounds_properties, pd.DataFrame)
-    assert len(compounds_properties) > 0
-
-
-assert_frame_equal(
-    compounds_properties_created,
-    compounds_properties_loaded,
-    check_exact=False,
-    atol=1e-5,
-    rtol=1e-5,
-    check_dtype=False,
-)
-
-
-# Test the `create_dict_names_to_iupacs` method
-def test_create_dict_names_to_iupacs(project):
-    dict_names_to_iupacs = proj.create_dict_names_to_iupacs()
-    assert isinstance(dict_names_to_iupacs, dict)
-    assert len(dict_names_to_iupacs) > 0
-
-
-# Test the `add_iupac_to_files_and_calibrations` method
-def test_add_iupac_to_files_and_calibrations(project):
-    files_iupac, calibration_iupac = proj.add_iupac_to_files_and_calibrations()
-    assert isinstance(files_iupac, dict)
-    assert isinstance(calibration_iupac, dict)
-    assert len(files_iupac) > 0
-    assert len(calibration_iupac) > 0
-
-
-# Test the `create_tanimoto_and_molecular_weight_similarity_dfs` method
-def test_create_tanimoto_and_molecular_weight_similarity_dfs(project):
-
-    tanimoto_df, mw_similarity_df = (
-        proj.create_tanimoto_and_molecular_weight_similarity_dfs()
-    )
-    assert isinstance(tanimoto_df, pd.DataFrame)
-    assert isinstance(mw_similarity_df, pd.DataFrame)
-    assert len(tanimoto_df) > 0
-    assert len(mw_similarity_df) > 0
-
-
-# Test the `apply_calib_to_single_file` method
-def test_apply_calib_to_single_file(project):
-    file_name = "S_1"
-    calibrated_file = proj.apply_calib_to_single_file(file_name)
-    assert isinstance(calibrated_file, pd.DataFrame)
-    assert len(calibrated_file) > 0
-
-
-# Test the `apply_calibration_to_files` method
-def test_apply_calibration_to_files(project):
-    calibrated_files = proj.apply_calibration_to_files()
-    assert isinstance(calibrated_files, dict)
-    assert len(calibrated_files) > 0
-
-
-# Test the `add_stats_to_files_info` method
-def test_add_stats_to_files_info(project):
-    files_info_with_stats = proj.add_stats_to_files_info()
-    assert isinstance(files_info_with_stats, pd.DataFrame)
-    assert len(files_info_with_stats) > 0
-
-
-# Test the `create_samples_info` method
-def test_create_samples_info(project):
-    samples_info, samples_info_std = proj.create_samples_info()
-    assert isinstance(samples_info, pd.DataFrame)
-    assert isinstance(samples_info_std, pd.DataFrame)
-    assert len(samples_info) > 0
-    assert len(samples_info_std) > 0
-
-
-# Test the `create_single_sample_from_files` method
-def test_create_single_sample_from_files(project):
-    files_in_sample = ["S_1", "S_2"]
-    sample_name = "S"
-    single_sample = proj.create_single_sample_from_files(files_in_sample, sample_name)
-    assert isinstance(single_sample, pd.DataFrame)
-    assert len(single_sample) > 0
-
-
-# Test the `create_samples_from_files` method
-def test_create_samples_from_files(project):
-    samples, samples_std = proj.create_samples_from_files()
-    assert isinstance(samples, dict)
-    assert isinstance(samples_std, dict)
-    assert len(samples) > 0
-    assert len(samples_std) > 0
-
-
-# Test the `create_files_param_report` method
-def test_create_files_param_report(project):
-    param = "height"
-    files_param_report = proj.create_files_param_report(param)
-    assert isinstance(files_param_report, pd.DataFrame)
-    assert len(files_param_report) > 0
-
-
-# Test the `create_samples_param_report` method
-def test_create_samples_param_report(project):
-    param = "height"
-    samples_param_report, samples_param_report_std = proj.create_samples_param_report(
-        param
-    )
-    assert isinstance(samples_param_report, pd.DataFrame)
-    assert isinstance(samples_param_report_std, pd.DataFrame)
-    assert len(samples_param_report) > 0
-    assert len(samples_param_report_std) > 0
-
-
-# Test the `create_files_param_aggrrep` method
-def test_create_files_param_aggrrep(project):
-    param = "height"
-    files_param_aggrrep = proj.create_files_param_aggrrep(param)
-    assert isinstance(files_param_aggrrep, pd.DataFrame)
-    assert len(files_param_aggrrep) > 0
-
-
-# Test the `create_samples_param_aggrrep` method
-def test_create_samples_param_aggrrep(project):
-    param = "height"
-    samples_param_aggrrep, samples_param_aggrrep_std = (
-        proj.create_samples_param_aggrrep(param)
-    )
-    assert isinstance(samples_param_aggrrep, pd.DataFrame)
-    assert isinstance(samples_param_aggrrep_std, pd.DataFrame)
-    assert len(samples_param_aggrrep) > 0
-    assert len(samples_param_aggrrep_std) > 0
-
-
-# Test the `save_files_samples_reports` method
-def test_save_files_samples_reports(project):
-    proj.save_files_samples_reports()
-    # Add assertions to check if the reports are saved successfully
-    # Test the default parameters
-    for subfolder in [
-        "",
-        "files",
-        "samples",
-        "files_reports",
-        "files_aggrreps",
-        "samples_reports",
-        "samples_aggrreps",
-    ]:
-        assert (folder_path / "output" / subfolder).exists()
-        assert len(list((folder_path / "output" / subfolder).iterdir())) > 0
-
-    # Remove the output folder
-    # shutil.rmtree(folder_path / "output")
-
-
-# check that the average between s1 and s2 is the same as s_ave for area
-for param in proj.acceptable_params:
-    print(f"{param = }")
-    for compound in s1.index.drop("notvalidcomp").drop("dichlorobenzene"):
-        print(f"\t {compound = }")
-
-        if compound not in s2.index:
-            assert np.isclose(
-                s_ave.loc[compound, param],
-                (s1.loc[compound, param] + 0) / 2,
-            )
-        else:
-            assert np.isclose(
-                s_ave.loc[compound, param],
-                (s1.loc[compound, param] + s2.loc[compound, param]) / 2,
-            )
-    # do the same for the standard deviation
-
-    for compound in s1.index.drop("notvalidcomp").drop("dichlorobenzene"):
-        if compound not in s2.index:
-            assert np.isclose(
-                s_std.loc[compound, param], np.std((s1.loc[compound, param], 0), ddof=1)
-            )
-        else:
-            assert np.isclose(
-                s_std.loc[compound, param],
-                np.std((s1.loc[compound, param], s2.loc[compound, param]), ddof=1),
-            )
-
-# Test that for each file and parameter, values match with the original file in the reports
-
-for param in proj.acceptable_params:
-    print(f"{param=}")
-    rep = proj.create_files_param_report(param)
-    for filename, file in files.items():
-        print(f"\t{filename=}")
-        for compound in file.index:
-            print(f"\t\t{compound=}")
-            original_values = file.loc[compound, param]
-            try:
-                report_values = rep.loc[compound, filename]
-                assert np.allclose(original_values, report_values)
-            except KeyError:
-                assert np.isnan(original_values) or original_values == 0
-# %%
-for param in proj.acceptable_params:
-    print(f"{param=}")
-    rep, rep_std = proj.create_samples_param_report(param)
-    for samplename, sample in samples.items():
-        sample_std = proj.samples_std[samplename]
-        print(f"\t{samplename=}")
-        for compound in sample.index:
-            print(f"\t\t{compound=}")
-            original_values = sample.loc[compound, param]
-            original_values_std = sample_std.loc[compound, param]
-            try:
-                report_values = rep.loc[compound, samplename]
-                report_values_std = rep_std.loc[compound, samplename]
-                assert np.allclose(original_values, report_values)
-                assert np.allclose(original_values_std, report_values_std)
-            except KeyError:
-                assert np.isnan(original_values) or original_values == 0
-
-
-# %%

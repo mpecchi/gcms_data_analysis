@@ -266,7 +266,7 @@ class Project:
         for filename in self.files_info.index:
             file = self.load_single_file(filename)
             self.files[filename] = file
-        print("Info: load_all_files: files loaded")
+        print(f"Info: load_all_files: {len(self.files)} files loaded")
         return self.files
 
     def load_single_file(self, filename) -> pd.DataFrame:
@@ -464,7 +464,10 @@ class Project:
             self.load_compounds_properties()
         if self.dict_names_to_iupacs is None:
             self.create_dict_names_to_iupacs()
-        if "iupac_name" not in list(self.files.values())[0].columns:
+        if (
+            "iupac_name" not in list(self.files.values())[0].columns
+            or "iupac_name" not in list(self.calibrations.values())[0].columns
+        ):
             self.add_iupac_to_files_and_calibrations()
         prop_index_iupac = self.compounds_properties.set_index("iupac_name")
         prop_index_iupac = prop_index_iupac[
@@ -542,12 +545,23 @@ class Project:
         in the loaded files, adjusting concentrations based on calibration
         data, and updates the 'files' attribute with calibrated data."""
         print("Info: apply_calibration_to_files: loop started")
-        if "iupac_name" not in list(self.files.values())[0].columns:
+        if not self.files:
+            self.load_all_files()
+        if not self.calibrations:
+            self.load_calibrations()
+        if self.compounds_properties is None:
+            self.load_compounds_properties()
+        if self.dict_names_to_iupacs is None:
+            self.create_dict_names_to_iupacs()
+        if (
+            "iupac_name" not in list(self.files.values())[0].columns
+            or "iupac_name" not in list(self.calibrations.values())[0].columns
+        ):
             self.add_iupac_to_files_and_calibrations()
         if self.use_semi_calibration and not self.semi_calibration_dict:
             self.create_semi_calibration_dict()
 
-        for filename in self.files.keys():
+        for filename in self.files:
             self.files[filename] = self.apply_calib_to_single_file(filename)
         return self.files
 
@@ -630,7 +644,8 @@ class Project:
         DataFrame, such as maximum height, area, and concentrations,
         updating the 'files_info' with these statistics."""
         print("Info: add_stats_to_files_info: started")
-
+        if not self.files:
+            self.load_all_files()
         numeric_columns = [
             col
             for col in self.acceptable_params
@@ -658,8 +673,8 @@ class Project:
         """Creates a summary 'samples_info' DataFrame from 'files_info',
         aggregating data for each sample, and updates the 'samples_info'
         attribute with this summarized data."""
-        if self.files_info is None:
-            self.load_files_info()
+        if not self.files:
+            self.load_all_files()
         numeric_columns = [
             col
             for col in self.acceptable_params
@@ -801,6 +816,12 @@ class Project:
             self.load_all_files()
         if param not in self.acceptable_params:
             raise ValueError(f"{param = } is not an acceptable param")
+        self.load_calibrations()
+        if self.calibrations:
+            self.apply_calibration_to_files()
+        for filename in self.files_info.index:
+            if param not in self.files[filename].columns:
+                raise ValueError(f"{param = } not found in {filename = }")
         # Create a dictionary of Series, each Series named after the file and containing the 'param' values
         series_dict = {
             filename: self.files[filename][param].rename(filename)
@@ -829,6 +850,8 @@ class Project:
             raise ValueError(f"{param = } is not an acceptable param")
         if param not in self.files_reports:
             self.create_files_param_report(param)
+        if self.compounds_properties is None:
+            self.load_compounds_properties()
         # create a df with iupac name index and fg_mf columns (underiv and deriv)
         comps_df = self.compounds_properties  # .set_index("iupac_name")
         # comps_df = comps_df[~comps_df.index.duplicated(keep="first")]
@@ -872,6 +895,9 @@ class Project:
         print(f"Info: create_samples_param_report: {param = }")
         if param not in self.acceptable_params:
             raise ValueError(f"{param = } is not an acceptable param")
+        self.load_calibrations()
+        if self.calibrations:
+            self.apply_calibration_to_files()
         if param not in self.files_reports:
             self.create_files_param_report(param)
         file_to_sample_rename = dict(
