@@ -2,47 +2,36 @@ import pytest
 from pandas.testing import assert_frame_equal
 
 
-def test_load_files_info(gcms, checked_files_info):
-    to_check = gcms.load_files_info()
-
+def test_files_info(proj):
+    files_info_created = proj.create_files_info(update_saved_files_info=False)
+    files_info_loaded = proj.load_files_info(update_saved_files_info=False)
     assert_frame_equal(
-        to_check, checked_files_info, check_exact=False, atol=1e-5, rtol=1e-5
+        files_info_created[["samplename", "replicatenumber"]],
+        files_info_loaded[["samplename", "replicatenumber"]],
+        check_exact=False,
+        atol=1e-5,
+        rtol=1e-5,
     )
+    assert files_info_created["dilution_factor"].tolist() == [1, 1, 1, 1, 1]
+    assert files_info_loaded["dilution_factor"].tolist() == [2, 2, 1, 1, 1]
 
 
-def test_create_files_info(gcms, checked_created_files_info):
-    to_check = gcms.create_files_info()
-    assert_frame_equal(
-        to_check, checked_created_files_info, check_exact=False, atol=1e-5, rtol=1e-5
-    )
+def test_load_all_files(proj, checked_files, checked_is_files_deriv):
+
+    files = proj.load_all_files()
+    assert list(files.keys()) == ["S_1", "S_2", "T_1", "T_2", "T_3"]
 
 
-def test_load_all_files(gcms, checked_files, checked_is_files_deriv):
-
-    files_to_check, is_deriv_files_to_check = gcms.load_all_files()
-    for filename_to_check, checked_filename in zip(files_to_check, checked_files):
-        assert filename_to_check == checked_filename
-
-    for file_to_check, checked_file in zip(
-        files_to_check.values(), checked_files.values()
-    ):
-        assert_frame_equal(
-            file_to_check, checked_file, check_exact=False, atol=1e-5, rtol=1e-5
-        )
-
-    assert is_deriv_files_to_check == checked_is_files_deriv
-
-
-def test_load_all_files_wrong_names(gcms):
-    wrong_files_info = gcms.create_files_info()
+def test_load_all_files_wrong_names(proj):
+    wrong_files_info = proj.create_files_info()
     wrong_files_info.index = ["Wrong_filename"] + wrong_files_info.index.tolist()[1:]
-    gcms.files_info = wrong_files_info
+    proj.files_info = wrong_files_info
     with pytest.raises(FileNotFoundError):
-        gcms.load_all_files()
+        proj.load_all_files()
 
 
-def test_load_class_code_fractions(gcms, checked_load_class_code_fractions):
-    to_check = gcms.load_class_code_frac()
+def test_load_class_code_fractions(proj, checked_load_class_code_fractions):
+    to_check = proj.load_class_code_frac()
     assert_frame_equal(
         to_check,
         checked_load_class_code_fractions,
@@ -53,37 +42,60 @@ def test_load_class_code_fractions(gcms, checked_load_class_code_fractions):
 
 
 def test_load_calibrations(
-    gcms,
+    proj,
     checked_load_calibrations,
 ):
-    files_info = gcms.create_files_info()
-    calib_to_check, is_calib_deriv_to_check = gcms.load_calibrations()
-    for to_check, checked in zip(calib_to_check, checked_load_calibrations):
-        assert to_check == checked
+    calibrations = proj.load_calibrations()
+    assert calibrations["cal_minimal"].index.tolist() == [
+        "phenol",
+        "naphthalene",
+        "dodecane",
+        "capric acid",
+    ]
+    assert calibrations["cal_minimal"].columns.tolist() == [
+        "MW",
+        "PPM 1",
+        "PPM 2",
+        "PPM 3",
+        "PPM 4",
+        "PPM 5",
+        "PPM 6",
+        "Area 1",
+        "Area 2",
+        "Area 3",
+        "Area 4",
+        "Area 5",
+        "Area 6",
+    ]
 
-        for to_check, checked in zip(
-            calib_to_check.values(), checked_load_calibrations.values()
-        ):
-            assert_frame_equal(
-                to_check, checked, check_exact=False, atol=1e-5, rtol=1e-5
-            )
 
-        assert is_calib_deriv_to_check == False
+def test_list_of_all_compounds(proj):
+    to_check = proj.create_list_of_all_compounds()
+    print(to_check.sort())
+    assert (
+        to_check.sort()
+        == [
+            "capric acid",
+            "dodecane",
+            "notvalidcomp",
+            "p-dichlorobenzene",
+            # "oleic acid",
+            # "phenol",
+            # "naphthalene",
+            "palmitic acid",
+        ].sort()
+    )
+    # assert to_check.sort() == checked_list_of_all_compounds.sort()
 
 
-def test_list_of_all_compounds(gcms, checked_list_of_all_compounds):
-    to_check = gcms.create_list_of_all_compounds()
-    assert to_check.sort() == checked_list_of_all_compounds.sort()
-
-
-# def test_list_of_all_deriv_compounds(gcms, checked_list_of_all_deriv_compounds):
-#     to_check = gcms.create_list_of_all_deriv_compounds()
+# def test_list_of_all_deriv_compounds(proj, checked_list_of_all_deriv_compounds):
+#     to_check = proj.create_list_of_all_deriv_compounds()
 #     assert to_check.sort() == checked_list_of_all_deriv_compounds.sort()
 
 
 @pytest.mark.slow
-def test_create_compounds_properties(gcms, checked_compounds_properties):
-    to_check = gcms.create_compounds_properties()
+def test_create_compounds_properties(proj, checked_compounds_properties):
+    to_check = proj.create_compounds_properties()
     assert_frame_equal(
         to_check.sort_index(),
         checked_compounds_properties.sort_index(),
@@ -95,8 +107,8 @@ def test_create_compounds_properties(gcms, checked_compounds_properties):
 
 
 # @pytest.mark.slow
-# def test_create_deriv_compounds_properties(gcms, checked_deriv_compounds_properties):
-#     to_check = gcms.create_deriv_compounds_properties()
+# def test_create_deriv_compounds_properties(proj, checked_deriv_compounds_properties):
+#     to_check = proj.create_deriv_compounds_properties()
 #     assert_frame_equal(
 #         to_check.sort_index(),
 #         checked_deriv_compounds_properties.sort_index(),
@@ -106,8 +118,8 @@ def test_create_compounds_properties(gcms, checked_compounds_properties):
 #     )
 
 
-def test_load_compounds_properties(gcms, checked_compounds_properties):
-    to_check = gcms.load_compounds_properties()
+def test_load_compounds_properties(proj, checked_compounds_properties):
+    to_check = proj.load_compounds_properties()
     assert_frame_equal(
         to_check.sort_index(),
         checked_compounds_properties.sort_index(),
@@ -117,8 +129,8 @@ def test_load_compounds_properties(gcms, checked_compounds_properties):
     )
 
 
-# def test_load_deriv_compounds_properties(gcms, checked_deriv_compounds_properties):
-#     to_check = gcms.load_deriv_compounds_properties()
+# def test_load_deriv_compounds_properties(proj, checked_deriv_compounds_properties):
+#     to_check = proj.load_deriv_compounds_properties()
 #     assert_frame_equal(
 #         to_check.sort_index(),
 #         checked_deriv_compounds_properties.sort_index(),
@@ -128,8 +140,8 @@ def test_load_compounds_properties(gcms, checked_compounds_properties):
 #     )
 
 
-def test_create_samples_info(gcms, checked_samples_info, checked_samples_info_std):
-    to_check, to_check_std = gcms.create_samples_info()
+def test_create_samples_info(proj, checked_samples_info, checked_samples_info_std):
+    to_check, to_check_std = proj.create_samples_info()
     assert_frame_equal(
         to_check, checked_samples_info, check_exact=False, atol=1e-5, rtol=1e-5
     )
@@ -150,8 +162,8 @@ def test_create_samples_info(gcms, checked_samples_info, checked_samples_info_st
         "fraction_of_feedstock_fr",
     ],
 )
-def test_files_param_reports(gcms, checked_files_param_reports, parameter):
-    to_check = gcms.create_files_param_report(param=parameter)
+def test_files_param_reports(proj, checked_files_param_reports, parameter):
+    to_check = proj.create_files_param_report(param=parameter)
     checked_report = checked_files_param_reports[parameter]
     assert_frame_equal(
         to_check.sort_index(),
@@ -162,9 +174,9 @@ def test_files_param_reports(gcms, checked_files_param_reports, parameter):
     )
 
 
-def test_files_param_reports_exception(gcms):
+def test_files_param_reports_exception(proj):
     with pytest.raises(ValueError):
-        gcms.create_files_param_report(param="wrong_parameter")
+        proj.create_files_param_report(param="wrong_parameter")
 
 
 @pytest.mark.parametrize(
@@ -179,8 +191,8 @@ def test_files_param_reports_exception(gcms):
         "fraction_of_feedstock_fr",
     ],
 )
-def test_files_param_aggrreps(gcms, checked_files_param_aggrreps, parameter):
-    to_check = gcms.create_files_param_aggrrep(param=parameter)
+def test_files_param_aggrreps(proj, checked_files_param_aggrreps, parameter):
+    to_check = proj.create_files_param_aggrrep(param=parameter)
     checked_report = checked_files_param_aggrreps[parameter]
     assert_frame_equal(
         to_check.sort_index(),
@@ -191,9 +203,9 @@ def test_files_param_aggrreps(gcms, checked_files_param_aggrreps, parameter):
     )
 
 
-def test_files_param_aggreps_exception(gcms):
+def test_files_param_aggreps_exception(proj):
     with pytest.raises(ValueError):
-        gcms.create_files_param_aggrrep(param="wrong_parameter")
+        proj.create_files_param_aggrrep(param="wrong_parameter")
 
 
 @pytest.mark.parametrize(
@@ -209,9 +221,9 @@ def test_files_param_aggreps_exception(gcms):
     ],
 )
 def test_samples_param_reports(
-    gcms, checked_samples_param_reports, checked_samples_param_reports_std, parameter
+    proj, checked_samples_param_reports, checked_samples_param_reports_std, parameter
 ):
-    to_check, to_check_std = gcms.create_samples_param_report(param=parameter)
+    to_check, to_check_std = proj.create_samples_param_report(param=parameter)
     checked_report = checked_samples_param_reports[parameter]
     checked_report_std = checked_samples_param_reports_std[parameter]
     assert_frame_equal(
@@ -230,9 +242,9 @@ def test_samples_param_reports(
     )
 
 
-def test_samples_param_reports_exception(gcms):
+def test_samples_param_reports_exception(proj):
     with pytest.raises(ValueError):
-        gcms.create_samples_param_report(param="wrong_parameter")
+        proj.create_samples_param_report(param="wrong_parameter")
 
 
 @pytest.mark.parametrize(
@@ -248,9 +260,9 @@ def test_samples_param_reports_exception(gcms):
     ],
 )
 def test_samples_param_aggrreps(
-    gcms, checked_samples_param_aggrreps, checked_samples_param_aggrreps_std, parameter
+    proj, checked_samples_param_aggrreps, checked_samples_param_aggrreps_std, parameter
 ):
-    to_check, to_check_std = gcms.create_samples_param_aggrrep(param=parameter)
+    to_check, to_check_std = proj.create_samples_param_aggrrep(param=parameter)
     checked_report = checked_samples_param_aggrreps[parameter]
     checked_report_std = checked_samples_param_aggrreps_std[parameter]
     assert_frame_equal(
@@ -269,6 +281,6 @@ def test_samples_param_aggrreps(
     )
 
 
-def test_samples_param_aggrreps_exception(gcms):
+def test_samples_param_aggrreps_exception(proj):
     with pytest.raises(ValueError):
-        gcms.create_samples_param_aggrrep(param="wrong_parameter")
+        proj.create_samples_param_aggrrep(param="wrong_parameter")

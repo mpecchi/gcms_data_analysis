@@ -11,9 +11,16 @@ minimal_case_dir = test_dir / "data_minimal_case"
 
 
 @pytest.fixture
-def gcms() -> Project:
-    proj = Project(folder_path=minimal_case_dir, auto_save_to_excel=False)
-    return proj
+def proj() -> Project:
+    project = Project(
+        folder_path=minimal_case_dir,
+        auto_save_to_excel=False,
+        compounds_to_rename_in_files={
+            "almost oleic acid": "oleic acid",
+            "dichlorobenzene": "p-dichlorobenzene",
+        },
+    )
+    return project
 
 
 @pytest.fixture

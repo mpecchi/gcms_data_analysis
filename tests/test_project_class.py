@@ -19,9 +19,11 @@ proj = Project(
         "dichlorobenzene": "p-dichlorobenzene",
     },
 )
+
 # %%
 files_info_created = proj.create_files_info(update_saved_files_info=False)
 print(files_info_created.T)
+
 files_info_loaded = proj.load_files_info(update_saved_files_info=False)
 print(files_info_loaded.T)
 # %%
