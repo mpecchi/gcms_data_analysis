@@ -1,0 +1,12 @@
+[Header]
+Data File Name	C:\Users\user\Documents\jla278\T3.qgd
+Output Date	3/18/2024
+Output Time	11:00:20 AM
+
+[MC Peak Table]
+# of Peaks	3
+Mass	TIC
+Peak#	Ret.Time	Proc.From	Proc.To	Mass	Area	Height	A/H	Conc.	Mark	Name	Ret. Index	Area%	Height%	SI	CAS #
+1	13.703	13.580	13.900	TIC	10	10	1	0	 V 	Phenol		2.59	3.01	97	108-95-2
+2	20.942	20.767	21.020	TIC	100	1000	1	0	 V 	Naphthalene		8.11	9.20	98	91-20-3
+3	21.426	21.373	21.500	TIC	1000	1000	1	0	 V 	Dodecane		0.36	0.57	96	112-40-3

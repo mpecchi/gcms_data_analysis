@@ -5,7 +5,6 @@ from gcms_data_analysis.gcms import Project
 import pandas as pd
 from pandas.testing import assert_frame_equal
 import numpy as np
-import shutil
 
 folder_path: plib.Path = plib.Path(__file__).parent
 
